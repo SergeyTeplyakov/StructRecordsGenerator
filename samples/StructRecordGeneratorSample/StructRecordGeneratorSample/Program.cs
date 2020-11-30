@@ -1,21 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace StructRecordGeneratorSample
+﻿namespace StructRecordGeneratorSample
 {
     [StructGenerators.StructEquality]
     partial struct S1
     {
         private readonly int x1;
-        private readonly int x2;
+        private int x3 => 42;
+        private int x4 { get; init; }
 
-        //public override int GetHashCode()
-        //{
-        //    return base.GetHashCode();
-        //}
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
     }
 
 
