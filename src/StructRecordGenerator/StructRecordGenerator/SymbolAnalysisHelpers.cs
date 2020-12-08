@@ -67,5 +67,21 @@ namespace StructRecordGenerator
 
             return false;
         }
+
+        public static bool IsOperatorEqualsSupported(this ITypeSymbol type)
+        {
+            if (type is INamedTypeSymbol nts && nts.IsGenericType)
+            {
+                return false;
+            }
+
+            if (type.SpecialType != SpecialType.None)
+            {
+                // I believe that all special types support operator ==
+                return true;
+            }
+
+            return type.GetMembers().Any(n => n.Name == "op_Equality");
+        }
     }
 }

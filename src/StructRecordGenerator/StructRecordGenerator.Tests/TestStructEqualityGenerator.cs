@@ -107,6 +107,36 @@ public partial struct MyStruct<T1, T2, T3, T4, T5>
         }
 
         [Test]
+        public void StructWithDoubleAndCustomStruct()
+        {
+            // BTW, the C# compiler devs explicitly decided not to go with this pattern for records to avoid code bloat.
+            string code = @"
+public struct S1
+{
+     public static bool operator ==(S1 left, S1 right) => true;
+    public static bool operator !=(S1 left, S1 right) => true;
+}
+
+public struct S2
+{
+}
+
+[StructGenerators.StructEquality]
+public partial struct MyStruct
+{
+    private readonly double _v;
+    private readonly S1 _s1;
+    private readonly S2 _s2;
+}
+";
+
+            var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
+            var output = generatorTestHelper.GetGeneratedOutput(code);
+
+            output.Should().Contain("(left._v, left._s1) == (right._v, right._s1) && (left._s2).Equals((right._s2))");
+        }
+
+        [Test]
         public void StructWithProperties()
         {
             string code = @"

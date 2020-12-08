@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <LangVersion>9.0</LangVersion>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,5 +13,24 @@
     </PackageReference>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <PackageId>StructRecordGenerator</PackageId>
+    <Authors>Sergey Teplyakov</Authors>
+    <PackageLicenseUrl>https://github.com/SergeyTeplyakov/StructRecordsGenerator/blob/main/LICENSE</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/SergeyTeplyakov/StructRecordsGenerator</RepositoryUrl>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <Description>A set of source generators for creating struc-based "records".</Description>
+    <Version>0.1.0</Version>
+    <PackageReleaseNotes>
+      0.1.0
+      * Implement `StructEqualityGenerator`.
+    </PackageReleaseNotes>
+    <Copyright>Copyright Sergey Teplyakov</Copyright>
+    <PackageTags>source generators</PackageTags>
+    <NoPackageAnalysis>true</NoPackageAnalysis>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+  </PropertyGroup>
 
 </Project>

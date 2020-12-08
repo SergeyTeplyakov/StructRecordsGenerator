@@ -15,18 +15,6 @@ namespace StructRecordGenerator
     [Generator]
     public class StructEqualityGenerator : ISourceGenerator
     {
-        public const string StructMustBePartialDiagnosticDiagnosticId = "SEG001";
-        private const string Title = "A struct must be partial";
-        private const string Message = "A struct '{0}' must be partial";
-
-        private static readonly DiagnosticDescriptor StructMustBePartialDiagnostic = new DiagnosticDescriptor(
-            StructMustBePartialDiagnosticDiagnosticId, 
-            Title, 
-            Message, 
-            category: "Correctness", 
-            defaultSeverity: DiagnosticSeverity.Warning, 
-            isEnabledByDefault: true);
-
         public const string StructAlreadyImplementsEqualityMemberId = "SEG002";
 
         private static readonly DiagnosticDescriptor StructAlreadyImplementsEqualityMemberlDiagnostic = new DiagnosticDescriptor(
@@ -81,18 +69,19 @@ public override int GetHashCode()
     return ($$FIELDS$$).GetHashCode();
 }";
 
+        // Technically, this implementation is not 100% correct, because .Equals behavior may differ from == behavior (for instance, for Double).
         private const string _operatorEqualsTemplate = @"
 /// <summary>
 /// The equality operator <code>==</code> returns <code>true</code> if its operands are equal, <code>false</code> otherwise. 
 /// </summary>
-public static bool operator ==($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) => left.Equals(right);
-";
+public static bool operator ==($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) => $$OPERATOR==IMPL$$;";
 
         private const string _operatorNotEqualsTemplate = @"
 /// <summary>
 /// The inequality operator <code>!=</code> returns <code>true</code> if its operands are not equal, <code>false</code> otherwise. 
 /// </summary>
-public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) => !left.Equals(right);
+public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) 
+    => !(left == right);
 ";
 
         /// <inheritdoc />
@@ -138,28 +127,28 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) => !
                 }
             }
 
-            foreach(var annotatedStruct in annotatedStructs)
+            foreach(var (syntax, symbol) in annotatedStructs)
             {
                 // Need a full name because in one project there could be more than one struct with the same name.
-                string structName = annotatedStruct.symbol.ToDisplayString();
+                string structName = symbol.ToDisplayString(FullyQualifiedFormat);
 
                 if (!generateDiagnosticsIfNeeded())
                 {
-                    var source = GenerateEquality(annotatedStruct.symbol);
+                    var source = GenerateEquality(symbol);
                     context.AddSource($"{structName}_equality.cs", source);
                 }
 
                 bool generateDiagnosticsIfNeeded()
                 {
                     // Warn if the struct is not partial.
-                    if (!annotatedStruct.symbol.IsPartial(context.CancellationToken))
+                    if (StructGeneratorAnalyzer.TryCreateStructIsNotPartialDiagnostic(syntax, symbol, context.CancellationToken, out var diagnostic))
                     {
-                        context.ReportDiagnostic(Diagnostic.Create(StructMustBePartialDiagnostic, location: annotatedStruct.syntax.Identifier.GetLocation(), structName));
+                        context.ReportDiagnostic(diagnostic);
                         return true;
                     }
 
                     // Warn if the struct already implements any equality members
-                    IMethodSymbol[] equalityMembers = GetEqualityMembers(annotatedStruct.symbol);
+                    IMethodSymbol[] equalityMembers = GetEqualityMembers(symbol);
                     foreach (var member in equalityMembers)
                     {
                         context.ReportDiagnostic(
@@ -170,6 +159,14 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) => !
                 }
             }
         }
+
+        public static SymbolDisplayFormat FullyQualifiedFormat { get; } =
+            new SymbolDisplayFormat(
+                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+                genericsOptions: SymbolDisplayGenericsOptions.None,
+                miscellaneousOptions:
+                    SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
 
         private static IMethodSymbol[] GetEqualityMembers(INamedTypeSymbol structSymbol)
             => structSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => IsEqualityMember(m)).ToArray();
@@ -206,33 +203,36 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) => !
                 .ToList();
 
             var fieldsOrProps = fields.Concat(properties).ToList();
+
             var thisMembers = string.Join(", ", fieldsOrProps.Select(f => f.Name));
             var otherMembers = string.Join(", ", fieldsOrProps.Select(f => $"other.{f.Name}"));
+            var leftMembers = string.Join(", ", fieldsOrProps.Select(f => $"left.{f.Name}"));
+            var rightMembers = string.Join(", ", fieldsOrProps.Select(f => $"right.{f.Name}"));
 
             // Need to handle differently the case when the struct has no fields.
             // In this case, just use '42' as a placeholder for the state.
             if (fieldsOrProps.Count == 0)
             {
-                thisMembers = otherMembers = "42";
+                thisMembers = otherMembers = leftMembers = rightMembers = "42";
             }
 
             // Need to check which equality members to generate based on existing members.
             var existingEqualityMembers = GetEqualityMembers(annotatedStruct);
-
-            var equalityMembersMap = new Dictionary<string, bool>
-            {
-                { _objectEqualsTemplate, existingEqualityMembers.Any(IsObjectEqualsOverride)},
-                { _equatableEqualsTemplate, existingEqualityMembers.Any(IsIEqualityEquals) },
-                { _getHashCodeTemplate, existingEqualityMembers.Any(IsObjectGetHashCodeOverride) },
-                { _operatorEqualsTemplate, existingEqualityMembers.Any(IsEqualityOperator) },
-                { _operatorNotEqualsTemplate, existingEqualityMembers.Any(IsInequalityOperator) }
-            };
-
+            
             string structName = annotatedStruct.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
-            var equalityMembers = equalityMembersMap.Where(kvp => !kvp.Value).Select(kvp => (code: kvp.Key, exists: kvp.Value)).ToArray();
+            var equalityMembersMap = new Dictionary<string, (bool exists, Func<string, string> replacer)>
+            {
+                { _objectEqualsTemplate, (existingEqualityMembers.Any(IsObjectEqualsOverride), replaceTemplate)},
+                { _equatableEqualsTemplate, (existingEqualityMembers.Any(IsIEqualityEquals), replaceTemplate) },
+                { _getHashCodeTemplate, (existingEqualityMembers.Any(IsObjectGetHashCodeOverride), replaceTemplate) },
+                { _operatorEqualsTemplate, (existingEqualityMembers.Any(IsEqualityOperator), replaceOperatorEquals) },
+                { _operatorNotEqualsTemplate, (existingEqualityMembers.Any(IsInequalityOperator), replaceTemplate) }
+            };
 
-            var classBody = string.Join(Environment.NewLine, equalityMembers.Select(tpl => replaceTemplate(tpl.code)));
+            var equalityMembers = equalityMembersMap.Where(kvp => !kvp.Value.exists).Select(kvp => (code: kvp.Key, kvp.Value.exists, kvp.Value.replacer)).ToArray();
+
+            var classBody = string.Join(Environment.NewLine, equalityMembers.Select(tpl => tpl.replacer(tpl.code)));
             var classDeclaration = replaceTemplate(_classTemplate).Replace("$$STRUCT_MEMBERS$$", classBody);
 
             // The struct can be in a top-level (i.e. global) namespace.
@@ -252,7 +252,43 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) => !
                 template
                     .Replace("$$STRUCT_NAME$$", structName)
                     .Replace($"$$FIELDS$$", thisMembers)
+                    .Replace($"$$LEFT_FIELDS$$", leftMembers)
+                    .Replace($"$$RIGHT_FIELDS$$", rightMembers)
                     .Replace($"$$OTHER_FIELDS$$", otherMembers);
+
+            string replaceOperatorEquals(string template)
+            {
+                template = replaceTemplate(template);
+
+                // Operator== is a bit trickier.
+                // Here what we're going to do:
+                // we split all the members into two groups to generate the following code:
+                // operator==(left, right) => (left.field1, left.field2, left.field3) == (right.field1, right.field2, right.field3) && (left.field4, left.field5).Equals(right.field4, right.field5).
+                // The first group is the group of fields that support operator == and the second group that doesn't.
+                var membersWithMeta = fieldsOrProps.Select(p =>
+                {
+                    var type = p is IFieldSymbol fs ? fs.Type : (p is IPropertySymbol ps ? ps.Type : null);
+                    var supportOperatorEquals = type?.IsOperatorEqualsSupported() ?? false;
+                    return (symbol: p, type, name: p.Name, supportOperatorEquals);
+                }).ToList();
+
+
+                var withEquality = membersWithMeta.Where(m => m.supportOperatorEquals).ToList();
+                var withoutEquality = membersWithMeta.Where(m => !m.supportOperatorEquals).ToList();
+
+                string first = $"({string.Join(", ", withEquality.Select(m => $"left.{m.name}"))}) == ({string.Join(", ", withEquality.Select(m => $"right.{m.name}"))})";
+                string second = $"({string.Join(", ", withoutEquality.Select(m => $"left.{m.name}"))}).Equals(({string.Join(", ", withoutEquality.Select(m => $"right.{m.name}"))}))";
+
+                string body = (withEquality.Count, withoutEquality.Count) switch
+                {
+                    ( > 0, > 0) => $"{first} && {second}",
+                    ( > 0, 0) => first,
+                    (0, > 0) => second,
+                    (_, _) => "left.Equals(right)",
+                };
+
+                return template.Replace("$$OPERATOR==IMPL$$", body);
+            }
         }
 
         /// <summary>

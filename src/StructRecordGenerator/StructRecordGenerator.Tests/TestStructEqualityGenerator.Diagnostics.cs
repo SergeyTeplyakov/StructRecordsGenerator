@@ -19,7 +19,7 @@ public struct MyStruct
             var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
-            diagnostics.Should().Contain(d => d.Id == StructEqualityGenerator.StructMustBePartialDiagnosticDiagnosticId);
+            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructMustBePartialDiagnosticDiagnosticId);
         }
 
         [Test]

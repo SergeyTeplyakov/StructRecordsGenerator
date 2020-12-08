@@ -66,6 +66,10 @@ namespace StructRecordGenerator.Tests
             var driver = CSharpGeneratorDriver.Create(generator);
             driver.RunGeneratorsAndUpdateCompilation(compilation, out var outputCompilation, out var generatedDiagnostics);
 
+            // Intentionally writing the output before potentially generating an exception if diagnostics are presented.
+            string output = outputCompilation.SyntaxTrees.Last().ToString();
+            _output.WriteLine($"Generated output:" + Environment.NewLine + output);
+
             if (generatedDiagnostics.Length != 0)
             {
                 _output.WriteLine("Generated diagnostics:");
@@ -81,10 +85,6 @@ namespace StructRecordGenerator.Tests
                     throw new InvalidOperationException($"Unexpected diagnostics from source generators: {errors}");
                 }
             }
-
-            // Intentionally writing the output before potentially generating an exception if diagnostics are presented.
-            string output = outputCompilation.SyntaxTrees.Last().ToString();
-            _output.WriteLine(output);
 
             ThrowIfInvalid(outputCompilation, before: false);
 
