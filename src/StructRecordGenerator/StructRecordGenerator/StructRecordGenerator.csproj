@@ -24,8 +24,11 @@
     <RepositoryUrl>https://github.com/SergeyTeplyakov/StructRecordsGenerator</RepositoryUrl>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Description>A set of source generators for creating struc-based "records".</Description>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <PackageReleaseNotes>
+      0.2.0
+      * Implement `StructRecordGenerator`
+      * Implement `ToStringGenerator`
       0.1.0
       * Implement `StructEqualityGenerator`.
     </PackageReleaseNotes>

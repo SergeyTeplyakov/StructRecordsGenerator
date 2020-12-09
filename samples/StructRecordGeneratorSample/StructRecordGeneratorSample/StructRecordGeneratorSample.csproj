@@ -55,7 +55,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Analyzer Include="..\..\..\src\StructRecordGenerator\StructRecordGenerator\bin\Debug\netstandard2.0\StructRecordGenerator.dll" />
+    <Analyzer Include="..\..\..\src\StructRecordGenerator\StructRecordGenerator\bin\Release\netstandard2.0\StructRecordGenerator.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
