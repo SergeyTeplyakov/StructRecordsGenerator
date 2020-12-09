@@ -3,11 +3,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-
-
-#nullable enable
 
 namespace StructRecordGenerator
 {
@@ -84,22 +80,28 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right)
         }
 
         /// <inheritdoc />
-        protected override IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol)
+        public override IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol)
         {
             return typeSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => m.IsEqualityMember()).ToArray();
         }
 
         /// <inheritdoc />
-        protected override bool TryGenerateClassWithNewMembers(INamedTypeSymbol symbol, [NotNullWhen(true)] out string? result)
+        public override bool CanGenerateBody(INamedTypeSymbol typeSymbol)
         {
-            result = GenerateEquality(symbol);
-            return true;
+            // 5 is the number of equality members.
+            return GetExistingMembersToGenerate(typeSymbol).Length < 5;
         }
 
-        private string GenerateEquality(INamedTypeSymbol annotatedStruct)
+        /// <inheritdoc />
+        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol)
         {
-            var fields = annotatedStruct.GetMembers().Where(m => !m.IsStatic && m.Kind == SymbolKind.Field && !m.IsImplicitlyDeclared).ToList();
-            var properties = annotatedStruct
+            return GenerateEquality(symbol);
+        }
+
+        public string GenerateBody(INamedTypeSymbol typeSymbol)
+        {
+            var fields = typeSymbol.GetMembers().Where(m => !m.IsStatic && m.Kind == SymbolKind.Field && !m.IsImplicitlyDeclared).ToList();
+            var properties = typeSymbol
                 .GetMembers()
                 .Where(m => !m.IsStatic && m.Kind == SymbolKind.Property)
                 .Select(s => new { Symbol = s, Syntax = s.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as PropertyDeclarationSyntax })
@@ -123,9 +125,9 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right)
             }
 
             // Need to check which equality members to generate based on existing members.
-            var existingEqualityMembers = GetExistingMembersToGenerate(annotatedStruct);
-            
-            string structName = annotatedStruct.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+            var existingEqualityMembers = GetExistingMembersToGenerate(typeSymbol);
+
+            //string structName = typeSymbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
 
             var equalityMembersMap = new Dictionary<string, (bool exists, Func<string, string> replacer)>
             {
@@ -139,13 +141,10 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right)
             var equalityMembers = equalityMembersMap.Where(kvp => !kvp.Value.exists).Select(kvp => (code: kvp.Key, kvp.Value.exists, kvp.Value.replacer)).ToArray();
 
             var classBody = string.Join(Environment.NewLine, equalityMembers.Select(tpl => tpl.replacer(tpl.code)));
-            var classDeclaration = replaceTemplate(_classTemplate).Replace("$$STRUCT_MEMBERS$$", classBody);
-
-            return classDeclaration;
+            return classBody;
 
             string replaceTemplate(string template) =>
-                template
-                    .Replace("$$STRUCT_NAME$$", structName)
+                template.ReplaceTypeNameInTemplate(typeSymbol)
                     .Replace($"$$FIELDS$$", thisMembers)
                     .Replace($"$$LEFT_FIELDS$$", leftMembers)
                     .Replace($"$$RIGHT_FIELDS$$", rightMembers)
@@ -184,6 +183,15 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right)
 
                 return template.Replace("$$OPERATOR==IMPL$$", body);
             }
+        }
+
+        // TODOC
+        public string GenerateEquality(INamedTypeSymbol typeSymbol)
+        {
+            var classBody = GenerateBody(typeSymbol);
+            var classDeclaration = _classTemplate.ReplaceTypeNameInTemplate(typeSymbol).Replace("$$STRUCT_MEMBERS$$", classBody);
+
+            return classDeclaration;
         }
     }
 }

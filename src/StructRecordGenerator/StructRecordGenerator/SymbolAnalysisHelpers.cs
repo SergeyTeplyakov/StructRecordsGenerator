@@ -2,11 +2,11 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
-#nullable enable
 
 namespace StructRecordGenerator
 {
@@ -109,18 +109,48 @@ namespace StructRecordGenerator
 
         public static List<ISymbol> GetNonStaticFieldsAndProperties(this INamedTypeSymbol type, bool includeAutoPropertiesOnly)
         {
-            var fields = type.GetMembers().Where(m => !m.IsStatic && m.Kind == SymbolKind.Field && !m.IsImplicitlyDeclared).ToList();
+            var fields = type.GetNonStaticFields();
+            var properties = type.GetNonStaticProperties(includeAutoPropertiesOnly);
+
+            var fieldsOrProps = fields.OfType<ISymbol>().Concat(properties).ToList();
+            return fieldsOrProps;
+        }
+
+        public static List<IFieldSymbol> GetNonStaticFields(this INamedTypeSymbol type)
+        {
+            return type.GetMembers().Where(m => !m.IsStatic && m.Kind == SymbolKind.Field && !m.IsImplicitlyDeclared).Select(m => (IFieldSymbol)m).ToList();
+        }
+
+        public static List<IPropertySymbol> GetNonStaticProperties(this INamedTypeSymbol type, bool includeAutoPropertiesOnly)
+        {
             var properties = type
                 .GetMembers()
                 .Where(m => !m.IsStatic && m.Kind == SymbolKind.Property)
                 .Select(s => new { Symbol = s, Syntax = s.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as PropertyDeclarationSyntax })
                 .Where(s => s.Syntax != null)
-                .Where(p => !includeAutoPropertiesOnly || (p.Syntax.IsAutoProperty() || p.Syntax.IsGetSetAutoProperty()) )
-                .Select(p => p.Symbol)
+                .Where(p => !includeAutoPropertiesOnly || (p.Syntax.IsAutoProperty() || p.Syntax.IsGetSetAutoProperty()))
+                .Select(p => (IPropertySymbol)p.Symbol)
                 .ToList();
 
-            var fieldsOrProps = fields.Concat(properties).ToList();
-            return fieldsOrProps;
+            return properties;
+        }
+
+        public static string ToFullyQualifiedDisplayString(this ISymbol symbol)
+        {
+            var type = symbol switch
+            {
+                ITypeSymbol ts => ts,
+                IFieldSymbol fs => fs.Type,
+                IPropertySymbol ps => ps.Type,
+                _ => throw new InvalidOperationException($"Unknown symbol type '{symbol.GetType()}'"),
+            };
+
+            return type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        }
+
+        public static string ToMinimallyQualifiedFormat(this INamedTypeSymbol type)
+        {
+            return type.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
         }
     }
 }

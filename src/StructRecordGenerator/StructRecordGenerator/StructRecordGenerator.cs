@@ -1,281 +1,228 @@
-﻿//using Microsoft.CodeAnalysis;
-//using Microsoft.CodeAnalysis.CSharp;
-//using Microsoft.CodeAnalysis.CSharp.Syntax;
-//using Microsoft.CodeAnalysis.Text;
-//using System;
-//using System.Collections.Generic;
-//using System.Linq;
-//using System.Text;
-//using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
+﻿using Microsoft.CodeAnalysis;
 
-//#nullable enable
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
-//namespace StructRecordGenerator
-//{
-//    [Generator]
-//    public class StructRecordGenerator : ISourceGenerator
-//    {
-//        public const string StructMustBePartialDiagnosticDiagnosticId = "SEG001";
-//        private const string Title = "A struct must be partial";
-//        private const string Message = "A struct '{0}' must be partial";
+namespace StructRecordGenerator
+{
+    [Generator]
+    public class StructRecordGenerator : TypeMembersGenerator
+    {
+        private readonly StructEqualityGenerator _structEqualityGenerator;
+        private readonly ToStringGenerator _toStringGenerator;
 
-//        private static readonly DiagnosticDescriptor StructMustBePartialDiagnostic = new DiagnosticDescriptor(
-//            StructMustBePartialDiagnosticDiagnosticId, 
-//            Title, 
-//            Message, 
-//            category: "Correctness", 
-//            defaultSeverity: DiagnosticSeverity.Warning, 
-//            isEnabledByDefault: true);
+        private const string attributeText = @"
+using System;
+namespace StructGenerators
+{
+    [AttributeUsage(AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]
+    internal sealed class StructRecord : Attribute
+    {
+    }
+}
+";
 
-//        public const string StructAlreadyImplementsEqualityMemberId = "SEG002";
+        private const string _classTemplate = @"
+using System;
+using System.Text;
+partial struct $$STRUCT_NAME$$ : IEquatable<$$STRUCT_NAME$$>
+{
+    $$RECORD_MEMBERS$$
+    $$EQUALITY_MEMBERS$$
+    $$TO_STRING_MEMBERS$$
+}
+";
+        private const string _constructorTemplate = @"
+/// <summary>
+/// Creates an instance of struct $$STRUCT_NAME$$.
+/// </summary>
+private $$SHORT_STRUCT_NAME$$($$CONSTRUCTOR_ARGUMENTS$$)
+{
+    $$CONSTRUCTOR_BODY$$
+}";
 
-//        private static readonly DiagnosticDescriptor StructAlreadyImplementsEqualityMemberlDiagnostic = new DiagnosticDescriptor(
-//            StructAlreadyImplementsEqualityMemberId,
-//            "A struct already implements equality member",
-//            "A struct '{0}' already implements equality member '{1}'",
-//            category: "Correctness",
-//            defaultSeverity: DiagnosticSeverity.Info, // I don't think this is super critical, so lets keep it as Info
-//            isEnabledByDefault: true);
+        private const string _withMethodTemplate = @"
+/// <summary>
+/// Creates a copy of the current instance with a given argument <paramref name=""value"" />.
+/// </summary>
+public $$STRUCT_NAME$$ With$$MEMBER_NAME$$($$MEMBER_TYPE$$ value)
+{
+    $$WITH_MEMBER_BODY$$
+}";
+        
+        private const string _cloneMethodTemplate = @"
+/// <summary>
+/// Creates a copy of the current instance.
+/// </summary>
+public $$STRUCT_NAME$$ Clone()
+{
+    return new $$STRUCT_NAME$$($$CLONE_ARGUMENTS$$);
+}";
 
-//        private const string attributeText = @"
-//using System;
-//namespace StructGenerators
-//{
-//    [AttributeUsage(AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]
-//    internal sealed class StructEqualityAttribute : Attribute
-//    {
-//    }
-//}
-//";
+        /// <nodooc />
+        public StructRecordGenerator()
+            : base(GeneratedTargetTypeKinds.Struct)
+        {
+            _structEqualityGenerator = new StructEqualityGenerator();
+            _toStringGenerator = new ToStringGenerator();
+        }
 
-//        private const string _classTemplate = @"
-//using System;
-//partial struct $$STRUCT_NAME$$ : IEquatable<$$STRUCT_NAME$$>
-//{
-//    $$STRUCT_MEMBERS$$
-//}
-//";
-//        private const string _objectEqualsTemplate = @"
-///// <inheritdoc/>
-//public override bool Equals(object obj)
-//{
-//    if (obj is $$STRUCT_NAME$$ other)
-//    {
-//        return Equals(other);
-//    }
+        /// <inheritdooc />
+        protected override (string attributeName, string attributeText) GetAttribute()
+        {
+            return ("StructRecord", attributeText);
+        }
 
-//    return false;
-//}";
+        /// <inheritdooc />
+        public override IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol)
+        {
+            // Not sure how to resolve RS1024 in a different way!
+#pragma warning disable RS1024 // Compare symbols correctly
+            return _structEqualityGenerator.GetExistingMembersToGenerate(typeSymbol).Union(_toStringGenerator.GetExistingMembersToGenerate(typeSymbol)).ToArray();
+#pragma warning restore RS1024 // Compare symbols correctly
+        }
 
-//        private const string _equatableEqualsTemplate = @"
-///// <inheritdoc/>
-//public bool Equals($$STRUCT_NAME$$ other)
-//{
-//    return ($$FIELDS$$).Equals(($$OTHER_FIELDS$$));
-//}";
+        /// <inheritdooc />
+        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol)
+        {
+            string recordMembers = GenerateRecordMembers(symbol);
+            string equalityMembers = GenerateEqualityMembers(symbol);
+            string toStringMembers = GenerateToStringMembers(symbol);
 
-//        private const string _getHashCodeTemplate = @"
-///// <inheritdoc/>
-//public override int GetHashCode()
-//{
-//    return ($$FIELDS$$).GetHashCode();
-//}";
+            string result = _classTemplate
+                .ReplaceTypeNameInTemplate(symbol)
+                .Replace("$$RECORD_MEMBERS$$", recordMembers)
+                .Replace("$$EQUALITY_MEMBERS$$", equalityMembers)
+                .Replace("$$TO_STRING_MEMBERS$$", toStringMembers);
+            
+            return result;
+        }
+        
+        private string GenerateRecordMembers(INamedTypeSymbol symbol)
+        {
+            var allPrivateFieldsAndProperties = GetNonStaticFieldsAndProperties(symbol).ToList();
+            string constructor = GenerateConstructor(symbol, allPrivateFieldsAndProperties);
+            string withMembers = GenrateWithMembers(symbol, allPrivateFieldsAndProperties);
+            string cloneMethod = GenerateCloneMehtod(symbol, allPrivateFieldsAndProperties);
 
-//        private const string _operatorEqualsTemplate = @"
-///// <summary>
-///// The equality operator <code>==</code> returns <code>true</code> if its operands are equal, <code>false</code> otherwise. 
-///// </summary>
-//public static bool operator ==($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) => left.Equals(right);
-//";
+            return string.Join(Environment.NewLine, constructor, withMembers, cloneMethod);
+        }
 
-//        private const string _operatorNotEqualsTemplate = @"
-///// <summary>
-///// The inequality operator <code>!=</code> returns <code>true</code> if its operands are not equal, <code>false</code> otherwise. 
-///// </summary>
-//public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right) => !left.Equals(right);
-//";
+        private string GenerateConstructor(INamedTypeSymbol symbol, List<ISymbol> fieldsAndProperties)
+        {
+            if (fieldsAndProperties.Count == 0)
+            {
+                return string.Empty;
+            }
 
-//        /// <inheritdoc />
-//        public void Initialize(GeneratorInitializationContext context)
-//        {
-//            // Register a syntax receiver that will be created for each generation pass
-//            context.RegisterForSyntaxNotifications(() => new SyntaxReceiver());
-//        }
+            // This is an ugly version, but it will work:
 
-//        /// <inheritdoc />
-//        public void Execute(GeneratorExecutionContext context)
-//        {
-//            // add the attribute text
-//            context.AddSource("StructEqualityAttribute", SourceText.From(attributeText, Encoding.UTF8));
+            string arguments = string.Join(", ", fieldsAndProperties.Select(s => $"{s.ToFullyQualifiedDisplayString()} {s.Name}"));
+            StringBuilder body = new StringBuilder();
+            foreach (var m in fieldsAndProperties)
+            {
+                // This will generate the following:
+                // private MyStruct(string field, int PropertyName)
+                // {
+                //     this.field = field;
+                //     this.PropertyName = PropertyName;
+                // }
+                // So we don't convert member names to a canonical argument names.
+                body.AppendLine($"this.{m.Name} = {m.Name};");
+            }
 
-//            // retreive the populated receiver 
-//            if (context.SyntaxReceiver is not SyntaxReceiver receiver)
-//            {
-//                return;
-//            }
+            return _constructorTemplate.ReplaceTypeNameInTemplate(symbol)
+                .Replace("$$SHORT_STRUCT_NAME$$", symbol.Name)
+                .Replace("$$CONSTRUCTOR_ARGUMENTS$$", arguments)
+                .Replace("$$CONSTRUCTOR_BODY$$", body.ToString());
+        }
 
-//            // we're going to create a new compilation that contains the attribute.
-//            // TODO: we should allow source generators to provide source during initialize, so that this step isn't required.
-//            if (context.Compilation is not CSharpCompilation csharpCompilation || csharpCompilation.SyntaxTrees.FirstOrDefault()?.Options is not CSharpParseOptions options)
-//            {
-//                return;
-//            }
+        private string GenerateCloneMehtod(INamedTypeSymbol symbol, List<ISymbol> allPrivateFieldsAndProperties)
+        {
+            string constructorArgs = string.Join(", ", allPrivateFieldsAndProperties.Select(m => m.Name));
+            return _cloneMethodTemplate
+                .ReplaceTypeNameInTemplate(symbol)
+                .Replace("$$CLONE_ARGUMENTS$$", constructorArgs);
+        }
 
-//            Compilation compilation = context.Compilation.AddSyntaxTrees(CSharpSyntaxTree.ParseText(SourceText.From(attributeText, Encoding.UTF8), options));
+        private string GenrateWithMembers(INamedTypeSymbol symbol, List<ISymbol> allNonStaticFieldsAndProperties)
+        {
+            // TODO: check that the names are unique?
+            // Exclude implicitly implemented members! (should be excluded already btw).
+            StringBuilder result = new StringBuilder();
+            
+            var template = _withMethodTemplate.ReplaceTypeNameInTemplate(symbol);
 
-//            // get the newly bound attribute, and INotifyPropertyChanged
-//            INamedTypeSymbol attributeSymbol = compilation.GetTypeByMetadataName("StructGenerators.StructEqualityAttribute")!;
+            var nonPrivateMembers = allNonStaticFieldsAndProperties.Where(m => m.DeclaredAccessibility != Accessibility.Private).ToList();
+            // Generating 'WithXXX' for non-private members only.
+            foreach (var member in nonPrivateMembers)
+            {
+                var withMember = template
+                    .Replace("$$MEMBER_TYPE$$", member.ToFullyQualifiedDisplayString())
+                    .Replace("$$MEMBER_NAME$$", member.Name)
+                    .Replace("$$WITH_MEMBER_BODY$$", getConstructorCall(member));
+                
+                result.AppendLine(withMember);
+            }
+            
+            return result.ToString();
 
-//            // loop over the candidate fields, and keep the ones that are actually annotated
-//            List<(StructDeclarationSyntax syntax, INamedTypeSymbol symbol)> annotatedStructs = new ();
-//            foreach (var structDeclaration in receiver.CandidateStructs)
-//            {
-//                SemanticModel model = compilation.GetSemanticModel(structDeclaration.SyntaxTree);
-//                var structSymbol = model.GetDeclaredSymbol(structDeclaration);
-//                if (structSymbol is INamedTypeSymbol ts && ts.HasAttribute(attributeSymbol))
-//                {
-//                    annotatedStructs.Add((syntax: structDeclaration, symbol: ts));
-//                }
-//            }
+            string getConstructorCall(ISymbol currentFieldOrProperty)
+            {
+                // Constructor call should use all members.
+                var arguments = string.Join(", ", allNonStaticFieldsAndProperties.Select(m => m.Equals(currentFieldOrProperty, SymbolEqualityComparer.Default) ? "value" : $"this.{m.Name}"));
+                // Need to use the format with generic type arguments and not just a name.
+                return $"return new {symbol.ToMinimallyQualifiedFormat()}({arguments});";
+            }
+        }
 
-//            foreach(var annotatedStruct in annotatedStructs)
-//            {
-//                // Need a full name because in one project there could be more than one struct with the same name.
-//                string structName = annotatedStruct.symbol.ToDisplayString();
+        private string GenerateEqualityMembers(INamedTypeSymbol symbol)
+        {
+            if (_structEqualityGenerator.CanGenerateBody(symbol))
+            {
+                return _structEqualityGenerator.GenerateBody(symbol);
+            }
 
-//                if (!generateDiagnosticsIfNeeded())
-//                {
-//                    var source = GenerateEquality(annotatedStruct.symbol);
-//                    context.AddSource($"{structName}_equality.cs", source);
-//                }
+            return string.Empty;
+        }
 
-//                bool generateDiagnosticsIfNeeded()
-//                {
-//                    // Warn if the struct is not partial.
-//                    if (!annotatedStruct.symbol.IsPartial(context.CancellationToken))
-//                    {
-//                        context.ReportDiagnostic(Diagnostic.Create(StructMustBePartialDiagnostic, location: annotatedStruct.syntax.Identifier.GetLocation(), structName));
-//                        return true;
-//                    }
+        private string GenerateToStringMembers(INamedTypeSymbol symbol)
+        {
+            if (_toStringGenerator.CanGenerateBody(symbol))
+            {
+                return _toStringGenerator.GenerateBody(symbol);
+            }
 
-//                    // Warn if the struct already implements any equality members
-//                    IMethodSymbol[] equalityMembers = GetEqualityMembers(annotatedStruct.symbol);
-//                    foreach (var member in equalityMembers)
-//                    {
-//                        context.ReportDiagnostic(
-//                            Diagnostic.Create(StructAlreadyImplementsEqualityMemberlDiagnostic, location: member.DeclaringSyntaxReferences.First().GetSyntax().GetLocation(), structName, member.Name));
-//                    }
+            return string.Empty;
+        }
 
-//                    return false;
-//                }
-//            }
-//        }
 
-//        private static IMethodSymbol[] GetEqualityMembers(INamedTypeSymbol structSymbol)
-//            => structSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => IsEqualityMember(m)).ToArray();
+        /// <inheritdooc />
+        public override bool CanGenerateBody(INamedTypeSymbol typeSymbol)
+        {
+            // TODO: Use more efficient version!
+            var nonStaticFieldsAndProperties = GetNonStaticNonPrivateFieldsAndProperties(typeSymbol);
 
-//        private static bool IsEqualityMember(IMethodSymbol methodSymbol)
-//        {
-//            return IsObjectEqualsOverride(methodSymbol) ||
-//                IsObjectGetHashCodeOverride(methodSymbol) ||
-//                IsIEqualityEquals(methodSymbol) ||
-//                IsEqualityOperator(methodSymbol) ||
-//                IsInequalityOperator(methodSymbol);
-//        }
+            // The generator can do stuff if there are some non-private fields or props, or the other generators can produce something.
+            return nonStaticFieldsAndProperties.Any() || _structEqualityGenerator.CanGenerateBody(typeSymbol) || _toStringGenerator.CanGenerateBody(typeSymbol);
+        }
 
-//        private static bool IsObjectEqualsOverride(IMethodSymbol methodSymbol) => methodSymbol.IsOverride && methodSymbol.Name == nameof(Equals);
+        private IEnumerable<ISymbol> GetNonStaticNonPrivateFieldsAndProperties(INamedTypeSymbol typeSymbol)
+        {
+            return GetNonStaticFieldsAndProperties(typeSymbol).Where(s => s.DeclaredAccessibility != Accessibility.Private);
 
-//        private static bool IsObjectGetHashCodeOverride(IMethodSymbol methodSymbol) => methodSymbol.IsOverride && methodSymbol.Name == nameof(GetHashCode);
+        }
+        
+        private IEnumerable<ISymbol> GetNonStaticFieldsAndProperties(INamedTypeSymbol typeSymbol)
+        {
+#pragma warning disable RS1024 // Compare symbols correctly
+            return typeSymbol.GetNonStaticFields().OfType<ISymbol>()
+                    .Union(
+                        typeSymbol.GetNonStaticProperties(includeAutoPropertiesOnly: true));
+#pragma warning restore RS1024 // Compare symbols correctly
 
-//        private static bool IsIEqualityEquals(IMethodSymbol methodSymbol) => (methodSymbol.IsInterfaceImplementation() && methodSymbol.Name == nameof(Equals));
-
-//        private static bool IsEqualityOperator(IMethodSymbol methodSymbol) => methodSymbol.MethodKind == MethodKind.UserDefinedOperator && methodSymbol.Name is "op_Equality";
-
-//        private static bool IsInequalityOperator(IMethodSymbol methodSymbol) => methodSymbol.MethodKind == MethodKind.UserDefinedOperator && methodSymbol.Name is "op_Inequality";
-
-//        private string GenerateEquality(INamedTypeSymbol annotatedStruct)
-//        {
-//            var fields = annotatedStruct.GetMembers().Where(m => !m.IsStatic && m.Kind == SymbolKind.Field && !m.IsImplicitlyDeclared).ToList();
-//            var properties = annotatedStruct
-//                .GetMembers()
-//                .Where(m => !m.IsStatic && m.Kind == SymbolKind.Property)
-//                .Select(s => new { Symbol = s, Syntax = s.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as PropertyDeclarationSyntax })
-//                .Where(s => s.Syntax != null)
-//                .Where(p => p.Syntax.IsAutoProperty() || p.Syntax.IsGetSetAutoProperty())
-//                .Select(p => p.Symbol)
-//                .ToList();
-
-//            var fieldsOrProps = fields.Concat(properties).ToList();
-//            var thisMembers = string.Join(", ", fieldsOrProps.Select(f => f.Name));
-//            var otherMembers = string.Join(", ", fieldsOrProps.Select(f => $"other.{f.Name}"));
-
-//            // Need to handle differently the case when the struct has no fields.
-//            // In this case, just use '42' as a placeholder for the state.
-//            if (fieldsOrProps.Count == 0)
-//            {
-//                thisMembers = otherMembers = "42";
-//            }
-
-//            // Need to check which equality members to generate based on existing members.
-//            var existingEqualityMembers = GetEqualityMembers(annotatedStruct);
-
-//            var equalityMembersMap = new Dictionary<string, bool>
-//            {
-//                { _objectEqualsTemplate, existingEqualityMembers.Any(IsObjectEqualsOverride)},
-//                { _equatableEqualsTemplate, existingEqualityMembers.Any(IsIEqualityEquals) },
-//                { _getHashCodeTemplate, existingEqualityMembers.Any(IsObjectGetHashCodeOverride) },
-//                { _operatorEqualsTemplate, existingEqualityMembers.Any(IsEqualityOperator) },
-//                { _operatorNotEqualsTemplate, existingEqualityMembers.Any(IsInequalityOperator) }
-//            };
-
-//            string structName = annotatedStruct.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-
-//            var equalityMembers = equalityMembersMap.Where(kvp => !kvp.Value).Select(kvp => (code: kvp.Key, exists: kvp.Value)).ToArray();
-
-//            var classBody = string.Join(Environment.NewLine, equalityMembers.Select(tpl => replaceTemplate(tpl.code)));
-//            var classDeclaration = replaceTemplate(_classTemplate).Replace("$$STRUCT_MEMBERS$$", classBody);
-
-//            // The struct can be in a top-level (i.e. global) namespace.
-//            // Adding namespace only when a struct is declared in one.
-//            if (!annotatedStruct.ContainingNamespace.IsGlobalNamespace)
-//            {
-//                classDeclaration = $"namespace {annotatedStruct.ContainingNamespace.ToDisplayString()} {{ {classDeclaration} }}";
-//            }
-
-//            // Parsing the output and normalizing the whitespaces.
-//            // This gives us another level of protection against bugs, because the parsing will fail if the string is malformed.
-//            var parsedOutput = ParseCompilationUnit(classDeclaration);
-
-//            return parsedOutput.NormalizeWhitespace().ToFullString();
-
-//            string replaceTemplate(string template) =>
-//                template
-//                    .Replace("$$STRUCT_NAME$$", structName)
-//                    .Replace($"$$FIELDS$$", thisMembers)
-//                    .Replace($"$$OTHER_FIELDS$$", otherMembers);
-//        }
-
-//        /// <summary>
-//        /// Created on demand before each generation pass.
-//        /// </summary>
-//        /// <remarks>
-//        /// This class should be very efficient.
-//        /// </remarks>
-//        internal class SyntaxReceiver : ISyntaxReceiver
-//        {
-//            public List<StructDeclarationSyntax> CandidateStructs { get; } = new List<StructDeclarationSyntax>();
-
-//            /// <summary>
-//            /// Called for every syntax node in the compilation, we can inspect the nodes and save any information useful for generation
-//            /// </summary>
-//            public void OnVisitSyntaxNode(SyntaxNode syntaxNode)
-//            {
-//                // any field with at least one attribute is a candidate for property generation
-//                if (syntaxNode is StructDeclarationSyntax structDeclarationSyntax && structDeclarationSyntax.AttributeLists.Count > 0)
-//                {
-//                    CandidateStructs.Add(structDeclarationSyntax);
-//                }
-//            }
-//        }
-//    }
-//}
+        }
+    }
+}

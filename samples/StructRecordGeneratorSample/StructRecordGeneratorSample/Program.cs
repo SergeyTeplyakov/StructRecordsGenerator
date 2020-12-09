@@ -2,6 +2,8 @@
 //using System.Text;
 
 using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Text;
 
 namespace StructRecordGeneratorSample
@@ -82,12 +84,13 @@ namespace StructRecordGeneratorSample
 
 
 
-    [StructGenerators.GenerateToString]
-    public partial class MyStruct
+    [StructGenerators.StructRecord]
+    public readonly partial struct MyStruct
     {
-        private readonly int _t2;
-        private readonly int _t3;
-        private static string _staticS;
+        public readonly int X;
+        public readonly int Y;
+        public readonly int Z;
+        static readonly string _staticProperty;
     }
 
     class Program
@@ -95,30 +98,10 @@ namespace StructRecordGeneratorSample
 
         static void Main(string[] args)
         {
+            MyStruct ms = default;
+            ms.WithX
         }
 
 
     }
-
-    public abstract class FooBar
-    {
-        public abstract void Foo();
-    }
-
-
-    public class FooBarImpl : FooBar
-    {
-        // Some comments
-
-
-
-        public override string ToString()
-        {
-            return base.ToString();
-        }
-
-        // Some other comments
-    }
-
-
 }

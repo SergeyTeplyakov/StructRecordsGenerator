@@ -4,13 +4,10 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
-
-#nullable enable
 
 namespace StructRecordGenerator
 {
@@ -89,8 +86,9 @@ namespace StructRecordGenerator
                     context.ReportDiagnostic(d);
                 }
 
-                if (TryGenerateClassWithNewMembers(symbol, out var typeDeclaration))
+                if (CanGenerateBody(symbol))
                 {
+                    var typeDeclaration = GenerateClassWithNewMembers(symbol);
 
                     // The struct can be in a top-level (i.e. global) namespace.
                     // Adding namespace only when a struct is declared in one.
@@ -109,9 +107,11 @@ namespace StructRecordGenerator
             }
         }
 
-        protected abstract bool TryGenerateClassWithNewMembers(INamedTypeSymbol symbol, [NotNullWhen(true)]out string? result);
+        protected abstract string GenerateClassWithNewMembers(INamedTypeSymbol symbol);
 
-        protected abstract IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol);
+        public abstract IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol);
+
+        public abstract bool CanGenerateBody(INamedTypeSymbol typeSymbol);
 
         public static SymbolDisplayFormat FullyQualifiedFormat { get; } =
             new SymbolDisplayFormat(

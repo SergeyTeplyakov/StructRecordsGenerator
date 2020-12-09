@@ -5,10 +5,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
-using Xunit;
 using Xunit.Abstractions;
-
-#nullable enable
 
 namespace StructRecordGenerator.Tests
 {

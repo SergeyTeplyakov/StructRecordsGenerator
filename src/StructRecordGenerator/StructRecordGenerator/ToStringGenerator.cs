@@ -1,11 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
-
-
-#nullable enable
 
 namespace StructRecordGenerator
 {
@@ -26,31 +22,34 @@ namespace StructGenerators
         private const string _typeTemplate = @"
 using System;
 using System.Text;
-partial $$CLASS_OR_STRUCT$$ $$TYPE_NAME$$
+partial $$CLASS_OR_STRUCT$$ $$STRUCT_NAME$$
 {
-    /// <inheritdoc/>
-    public override string ToString()
-    {
-        var sb = new StringBuilder();
-        sb.Append(""$$TYPE_NAME$$"");
-        sb.Append("" { "");
-
-        if (PrintMembers(sb))
-        {
-            sb.Append("" "");
-        }
-
-        sb.Append(""}"");
-
-        return sb.ToString(); 
-    }
-
-    $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
-    {
-        $$PRINT_MEMBERS_BODY$$
-    }
+    $$TYPE_MEMBERS$$
 }
 ";
+
+        private const string _bodyTemplate = @"
+/// <inheritdoc/>
+public override string ToString()
+{
+    var sb = new StringBuilder();
+    sb.Append(""$$TYPE_NAME$$"");
+    sb.Append("" { "");
+
+    if (PrintMembers(sb))
+    {
+        sb.Append("" "");
+    }
+
+    sb.Append(""}"");
+
+    return sb.ToString(); 
+}
+
+$$MODIFIER$$ bool PrintMembers(StringBuilder sb)
+{
+    $$PRINT_MEMBERS_BODY$$
+}";
 
         /// <nodoc />
         public ToStringGenerator()
@@ -59,26 +58,15 @@ partial $$CLASS_OR_STRUCT$$ $$TYPE_NAME$$
 
         }
 
-        /// <inheritdoc/>
-        protected override bool TryGenerateClassWithNewMembers(INamedTypeSymbol symbol, [NotNullWhen(true)] out string? result)
+        public string GenerateBody(INamedTypeSymbol typeSymbol)
         {
-            result = null;
-            // If the ToString() is already generated, nothing we can do here.
-            if (GetExistingMembersToGenerate(symbol).Length != 0)
-            {
-                return false;
-            }
+            string modifier = typeSymbol.IsValueType || typeSymbol.IsSealed ? "private" : "protected virtual";
+            var body = _bodyTemplate
+                .Replace($"$$TYPE_NAME$$", typeSymbol.Name)
+                .Replace("$$MODIFIER$$", modifier);
 
-            string typeName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-            string classOrStruct = symbol.IsValueType ? "struct" : "class";
-            string modifier = symbol.IsValueType || symbol.IsSealed ? "private" : "protected virtual";
-            result = _typeTemplate
-                .Replace("$$CLASS_OR_STRUCT$$", classOrStruct)
-                .Replace("$$MODIFIER$$", modifier)
-                .Replace("$$TYPE_NAME$$", typeName);
+            var fieldsAndProperties = typeSymbol.GetNonStaticFieldsAndProperties(includeAutoPropertiesOnly: false);
 
-            var fieldsAndProperties = symbol.GetNonStaticFieldsAndProperties(includeAutoPropertiesOnly: false);
-            
             var printMembersBody = "return false;";
 
             if (fieldsAndProperties.Count != 0)
@@ -100,8 +88,32 @@ partial $$CLASS_OR_STRUCT$$ $$TYPE_NAME$$
                 printMembersBody = sb.ToString();
             }
 
-            result = result.Replace("$$PRINT_MEMBERS_BODY$$", printMembersBody);
+            body = body.Replace("$$PRINT_MEMBERS_BODY$$", printMembersBody);
+            return body;
+        }
+
+        /// <inheritdoc/>
+        public override bool CanGenerateBody(INamedTypeSymbol typeSymbol)
+        {
+            // If the ToString() is already generated, nothing we can do here.
+            if (GetExistingMembersToGenerate(typeSymbol).Length != 0)
+            {
+                return false;
+            }
+
             return true;
+        }
+
+        /// <inheritdoc/>
+        protected override string GenerateClassWithNewMembers(INamedTypeSymbol typeSymbol)
+        {
+            string classOrStruct = typeSymbol.IsValueType ? "struct" : "class";
+            var body = GenerateBody(typeSymbol);
+            
+            return _typeTemplate
+                .ReplaceTypeNameInTemplate(typeSymbol)
+                .Replace("$$CLASS_OR_STRUCT$$", classOrStruct)
+                .Replace("$$TYPE_MEMBERS$$", body);
         }
 
         /// <inheritdoc/>
@@ -111,7 +123,7 @@ partial $$CLASS_OR_STRUCT$$ $$TYPE_NAME$$
         }
 
         /// <inheritdoc/>
-        protected override IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol)
+        public override IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol)
         {
             return typeSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => m.IsObjectToStringOverride()).ToArray();
         }

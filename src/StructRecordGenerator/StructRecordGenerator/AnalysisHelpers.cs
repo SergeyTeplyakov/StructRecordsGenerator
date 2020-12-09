@@ -1,5 +1,4 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
-#nullable enable
 
 namespace StructRecordGenerator
 {

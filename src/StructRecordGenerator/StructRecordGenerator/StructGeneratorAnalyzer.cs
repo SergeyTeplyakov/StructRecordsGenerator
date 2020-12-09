@@ -6,8 +6,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 
-#nullable enable
-
 namespace StructRecordGenerator
 {
     /// <summary>
@@ -15,7 +13,7 @@ namespace StructRecordGenerator
     /// </summary>
     public class StructGeneratorAnalyzer
     {
-        public const string StructMustBePartialDiagnosticDiagnosticId = "SEG001";
+        public const string StructMustBePartialDiagnosticDiagnosticId = "SRG001";
         private const string Title = "A struct must be partial";
         private const string Message = "A struct '{0}' must be partial";
 
@@ -27,7 +25,7 @@ namespace StructRecordGenerator
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true);
 
-        public const string StructAlreadyImplementsEqualityMemberId = "SEG002";
+        public const string StructAlreadyImplementsEqualityMemberId = "SRG002";
 
         public static readonly DiagnosticDescriptor StructAlreadyImplementsEqualityMemberlDiagnostic = new DiagnosticDescriptor(
             StructAlreadyImplementsEqualityMemberId,
