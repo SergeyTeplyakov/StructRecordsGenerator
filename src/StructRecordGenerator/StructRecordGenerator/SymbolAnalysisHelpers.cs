@@ -1,6 +1,8 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+
+using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
@@ -82,6 +84,43 @@ namespace StructRecordGenerator
             }
 
             return type.GetMembers().Any(n => n.Name == "op_Equality");
+        }
+
+        public static bool IsObjectEqualsOverride(this IMethodSymbol methodSymbol) => methodSymbol.IsOverride && methodSymbol.Name == nameof(Equals);
+
+        public static bool IsObjectToStringOverride(this IMethodSymbol methodSymbol) => methodSymbol.IsOverride && methodSymbol.Name == nameof(ToString);
+
+        public static bool IsObjectGetHashCodeOverride(this IMethodSymbol methodSymbol) => methodSymbol.IsOverride && methodSymbol.Name == nameof(GetHashCode);
+        
+        public static bool IsIEqualityEquals(this IMethodSymbol methodSymbol) => (methodSymbol.IsInterfaceImplementation() && methodSymbol.Name == nameof(Equals));
+        
+        public static bool IsEqualityOperator(this IMethodSymbol methodSymbol) => methodSymbol.MethodKind == MethodKind.UserDefinedOperator && methodSymbol.Name is "op_Equality";
+        
+        public static bool IsInequalityOperator(this IMethodSymbol methodSymbol) => methodSymbol.MethodKind == MethodKind.UserDefinedOperator && methodSymbol.Name is "op_Inequality";
+
+        public static bool IsEqualityMember(this IMethodSymbol methodSymbol)
+        {
+            return IsObjectEqualsOverride(methodSymbol) ||
+                IsObjectGetHashCodeOverride(methodSymbol) ||
+                IsIEqualityEquals(methodSymbol) ||
+                IsEqualityOperator(methodSymbol) ||
+                IsInequalityOperator(methodSymbol);
+        }
+
+        public static List<ISymbol> GetNonStaticFieldsAndProperties(this INamedTypeSymbol type, bool includeAutoPropertiesOnly)
+        {
+            var fields = type.GetMembers().Where(m => !m.IsStatic && m.Kind == SymbolKind.Field && !m.IsImplicitlyDeclared).ToList();
+            var properties = type
+                .GetMembers()
+                .Where(m => !m.IsStatic && m.Kind == SymbolKind.Property)
+                .Select(s => new { Symbol = s, Syntax = s.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as PropertyDeclarationSyntax })
+                .Where(s => s.Syntax != null)
+                .Where(p => !includeAutoPropertiesOnly || (p.Syntax.IsAutoProperty() || p.Syntax.IsGetSetAutoProperty()) )
+                .Select(p => p.Symbol)
+                .ToList();
+
+            var fieldsOrProps = fields.Concat(properties).ToList();
+            return fieldsOrProps;
         }
     }
 }

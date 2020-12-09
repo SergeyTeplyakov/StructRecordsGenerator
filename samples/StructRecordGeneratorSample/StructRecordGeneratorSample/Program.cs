@@ -13,23 +13,24 @@ namespace StructRecordGeneratorSample
         public double Y { get; init; }
     }
 
-    //[StructGenerators.StructEquality]
-    //partial struct S1
-    //{
-    //    private readonly int x1;
-    //    private int x3 => 42;
-    //    private int x4 { get; set; }
+    [StructGenerators.StructEquality]
+    partial struct S1
+    {
+        private readonly int x1;
+        private int x3 => 42;
+        private int x4 { get; set; }
 
-    //    public override int GetHashCode()
-    //    {
-    //        return base.GetHashCode();
-    //    }
-    //}
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+    }
 
-    public struct S1
+    [StructGenerators.StructEquality]
+    public partial struct S2
     {
         public double X { get; }
-        public S1(double x) => (X) = x;
+        //public S1(double x) => (X) = x;
     }
 
     //public record X(int X) {
@@ -41,11 +42,11 @@ namespace StructRecordGeneratorSample
 
     //}
 
-    public struct S2
+    public struct S3
     {
         public byte B { get; }
         public double X { get; }
-        public S2(double x) => (X, B) = (x, 0);
+        //public S2(double x) => (X, B) = (x, 0);
     }
 
     //class Program
@@ -81,52 +82,43 @@ namespace StructRecordGeneratorSample
 
 
 
-    /// <summary>
-    /// Record P
-    /// </summary>
-    // warning CS1591: Missing XML comment for publicly visible type or member 'P.D'
-    public record P(double D);
-
-
+    [StructGenerators.GenerateToString]
+    public partial class MyStruct
+    {
+        private readonly int _t2;
+        private readonly int _t3;
+        private static string _staticS;
+    }
 
     class Program
     {
 
-        //private static bool Foo<T>(T t1, T t2)
-        //{
-        //    // error CS0019: Operator '==' cannot be applied to operands of type 'T' and 'T'
-        //    return (t1, t2) == (t1, t2);
-        //}
-
-
-
-
-
-
-
-
-
-
-
         static void Main(string[] args)
         {
-            Point3 p = default;
-            Point3 p2 = default;
-            bool b = p == p2;
-            // The differences between Double.Equals and Double==
-            //Console.WriteLine(double.NaN.Equals(double.NaN)); // True
-            //Console.WriteLine(double.NaN == double.NaN); // False
-
-            //// The same is true for tuples!
-            //Console.WriteLine((double.NaN, 1).Equals((double.NaN, 1))); // True
-            //Console.WriteLine((double.NaN, 1) == (double.NaN, 1)); // False
-
-            //// But records in C# 9 behave differently!
-            //Console.WriteLine(new P(double.NaN).Equals(new P(double.NaN))); // True
-            //Console.WriteLine(new P(double.NaN) == new P(double.NaN)); // True
         }
 
 
     }
+
+    public abstract class FooBar
+    {
+        public abstract void Foo();
+    }
+
+
+    public class FooBarImpl : FooBar
+    {
+        // Some comments
+
+
+
+        public override string ToString()
+        {
+            return base.ToString();
+        }
+
+        // Some other comments
+    }
+
 
 }
