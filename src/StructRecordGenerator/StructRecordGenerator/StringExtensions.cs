@@ -1,6 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 
-namespace StructRecordGenerator
+namespace StructRecordGenerators
 {
     public static class StringExtensions
     {

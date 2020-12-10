@@ -1,7 +1,10 @@
 ﻿using FluentAssertions;
+
 using NUnit.Framework;
 
-namespace StructRecordGenerator.Tests
+using StructRecordGenerators.Generators;
+
+namespace StructRecordGenerators.Tests
 {
     [TestFixture]
     public class TestStructRecordGenerator
@@ -165,6 +168,43 @@ namespace X {
             var output = generatorTestHelper.GetGeneratedOutput(code);
 
             output.Should().Contain("Clone()");
+        }
+
+        [Test]
+        public void TestExistingConstructor()
+        {
+            string code = @"
+[StructGenerators.StructRecord]
+public partial struct MyStruct
+{
+    public readonly int X;
+    public readonly string S;
+    public MyStruct(int x, string s) {X = x; S = s;}
+}
+";
+
+            var generatorTestHelper = new GeneratorTestHelper<StructRecordGenerator>();
+            var output = generatorTestHelper.GetGeneratedOutput(code);
+
+            output.Should().Contain("WithX(");
+        }
+        
+        [Test]
+        public void TestExistingClone()
+        {
+            string code = @"
+[StructGenerators.StructRecord]
+public partial struct MyStruct
+{
+    public int X;
+    public MyStruct Clone() => default;
+}
+";
+
+            var generatorTestHelper = new GeneratorTestHelper<StructRecordGenerator>();
+            var output = generatorTestHelper.GetGeneratedOutput(code);
+
+            output.Should().Contain("WithX(");
         }
     }
 }

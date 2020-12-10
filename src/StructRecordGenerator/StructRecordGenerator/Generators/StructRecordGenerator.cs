@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace StructRecordGenerator
+namespace StructRecordGenerators.Generators
 {
     [Generator]
     public class StructRecordGenerator : TypeMembersGenerator
@@ -13,12 +13,14 @@ namespace StructRecordGenerator
         private readonly StructEqualityGenerator _structEqualityGenerator;
         private readonly ToStringGenerator _toStringGenerator;
 
+        private const string AttributeName = "StructRecordAttribute";
+
         private const string attributeText = @"
 using System;
 namespace StructGenerators
 {
     [AttributeUsage(AttributeTargets.Struct, Inherited = false, AllowMultiple = false)]
-    internal sealed class StructRecord : Attribute
+    internal sealed class StructRecordAttribute : Attribute
     {
     }
 }
@@ -51,7 +53,7 @@ public $$STRUCT_NAME$$ With$$MEMBER_NAME$$($$MEMBER_TYPE$$ value)
 {
     $$WITH_MEMBER_BODY$$
 }";
-        
+
         private const string _cloneMethodTemplate = @"
 /// <summary>
 /// Creates a copy of the current instance.
@@ -72,7 +74,13 @@ public $$STRUCT_NAME$$ Clone()
         /// <inheritdooc />
         protected override (string attributeName, string attributeText) GetAttribute()
         {
-            return ("StructRecord", attributeText);
+            return (AttributeName, attributeText);
+        }
+
+        public static bool HasStructRecordAttribute(INamedTypeSymbol symbol, Compilation compilation)
+        {
+            INamedTypeSymbol attributeSymbol = compilation.GetTypeByMetadataName($"StructGenerators.{AttributeName}")!;
+            return symbol.HasAttribute(attributeSymbol);
         }
 
         /// <inheritdooc />
@@ -85,7 +93,7 @@ public $$STRUCT_NAME$$ Clone()
         }
 
         /// <inheritdooc />
-        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol)
+        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol, Compilation compilation)
         {
             string recordMembers = GenerateRecordMembers(symbol);
             string equalityMembers = GenerateEqualityMembers(symbol);
@@ -96,10 +104,10 @@ public $$STRUCT_NAME$$ Clone()
                 .Replace("$$RECORD_MEMBERS$$", recordMembers)
                 .Replace("$$EQUALITY_MEMBERS$$", equalityMembers)
                 .Replace("$$TO_STRING_MEMBERS$$", toStringMembers);
-            
+
             return result;
         }
-        
+
         private string GenerateRecordMembers(INamedTypeSymbol symbol)
         {
             var allPrivateFieldsAndProperties = GetNonStaticFieldsAndProperties(symbol).ToList();
@@ -113,6 +121,11 @@ public $$STRUCT_NAME$$ Clone()
         private string GenerateConstructor(INamedTypeSymbol symbol, List<ISymbol> fieldsAndProperties)
         {
             if (fieldsAndProperties.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            if (symbol.HasConstructorWith(fieldsAndProperties))
             {
                 return string.Empty;
             }
@@ -141,6 +154,11 @@ public $$STRUCT_NAME$$ Clone()
 
         private string GenerateCloneMehtod(INamedTypeSymbol symbol, List<ISymbol> allPrivateFieldsAndProperties)
         {
+            if (symbol.HasCloneMethod())
+            {
+                return string.Empty;
+            }
+
             string constructorArgs = string.Join(", ", allPrivateFieldsAndProperties.Select(m => m.Name));
             return _cloneMethodTemplate
                 .ReplaceTypeNameInTemplate(symbol)
@@ -152,7 +170,7 @@ public $$STRUCT_NAME$$ Clone()
             // TODO: check that the names are unique?
             // Exclude implicitly implemented members! (should be excluded already btw).
             StringBuilder result = new StringBuilder();
-            
+
             var template = _withMethodTemplate.ReplaceTypeNameInTemplate(symbol);
 
             var nonPrivateMembers = allNonStaticFieldsAndProperties.Where(m => m.DeclaredAccessibility != Accessibility.Private).ToList();
@@ -163,10 +181,10 @@ public $$STRUCT_NAME$$ Clone()
                     .Replace("$$MEMBER_TYPE$$", member.ToFullyQualifiedDisplayString())
                     .Replace("$$MEMBER_NAME$$", member.Name)
                     .Replace("$$WITH_MEMBER_BODY$$", getConstructorCall(member));
-                
+
                 result.AppendLine(withMember);
             }
-            
+
             return result.ToString();
 
             string getConstructorCall(ISymbol currentFieldOrProperty)
@@ -180,7 +198,7 @@ public $$STRUCT_NAME$$ Clone()
 
         private string GenerateEqualityMembers(INamedTypeSymbol symbol)
         {
-            if (_structEqualityGenerator.CanGenerateBody(symbol))
+            if (_structEqualityGenerator.CanGenerateBody(symbol, compilation: null))
             {
                 return _structEqualityGenerator.GenerateBody(symbol);
             }
@@ -190,7 +208,7 @@ public $$STRUCT_NAME$$ Clone()
 
         private string GenerateToStringMembers(INamedTypeSymbol symbol)
         {
-            if (_toStringGenerator.CanGenerateBody(symbol))
+            if (_toStringGenerator.CanGenerateBody(symbol, compilation: null))
             {
                 return _toStringGenerator.GenerateBody(symbol);
             }
@@ -200,21 +218,22 @@ public $$STRUCT_NAME$$ Clone()
 
 
         /// <inheritdooc />
-        public override bool CanGenerateBody(INamedTypeSymbol typeSymbol)
+        public override bool CanGenerateBody(INamedTypeSymbol typeSymbol, Compilation? compilation)
         {
             // TODO: Use more efficient version!
             var nonStaticFieldsAndProperties = GetNonStaticNonPrivateFieldsAndProperties(typeSymbol);
 
+            // Intentionally passing 'null' as compilation argument, because we want to skip the analysis whether the StructGenerator attribute is defined or not.
+
             // The generator can do stuff if there are some non-private fields or props, or the other generators can produce something.
-            return nonStaticFieldsAndProperties.Any() || _structEqualityGenerator.CanGenerateBody(typeSymbol) || _toStringGenerator.CanGenerateBody(typeSymbol);
+            return nonStaticFieldsAndProperties.Any() || _structEqualityGenerator.CanGenerateBody(typeSymbol, compilation: null) || _toStringGenerator.CanGenerateBody(typeSymbol, compilation: null);
         }
 
         private IEnumerable<ISymbol> GetNonStaticNonPrivateFieldsAndProperties(INamedTypeSymbol typeSymbol)
         {
             return GetNonStaticFieldsAndProperties(typeSymbol).Where(s => s.DeclaredAccessibility != Accessibility.Private);
-
         }
-        
+
         private IEnumerable<ISymbol> GetNonStaticFieldsAndProperties(INamedTypeSymbol typeSymbol)
         {
 #pragma warning disable RS1024 // Compare symbols correctly

@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30709.132
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StructRecordGenerator", "StructRecordGenerator\StructRecordGenerator.csproj", "{BD514ABE-9B77-415B-8946-0C3AA9635456}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StructRecordGenerator", "StructRecordGenerator\StructRecordGenerator.csproj", "{BD514ABE-9B77-415B-8946-0C3AA9635456}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StructRecordGenerator.Tests", "StructRecordGenerator.Tests\StructRecordGenerator.Tests.csproj", "{9AD24292-A992-49F0-B63D-845A4C2EC105}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "StructRecordGenerators.Tests", "StructRecordGenerator.Tests\StructRecordGenerator.Tests.csproj", "{9AD24292-A992-49F0-B63D-845A4C2EC105}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    
+    <RootNamespace>StructRecordGenerators</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

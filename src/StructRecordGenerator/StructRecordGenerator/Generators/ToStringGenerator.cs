@@ -3,7 +3,7 @@
 using System.Linq;
 using System.Text;
 
-namespace StructRecordGenerator
+namespace StructRecordGenerators.Generators
 {
     [Generator]
     public class ToStringGenerator : TypeMembersGenerator
@@ -93,8 +93,14 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
         }
 
         /// <inheritdoc/>
-        public override bool CanGenerateBody(INamedTypeSymbol typeSymbol)
+        public override bool CanGenerateBody(INamedTypeSymbol typeSymbol, Compilation? compilation)
         {
+            if (compilation != null && StructRecordGenerator.HasStructRecordAttribute(typeSymbol, compilation))
+            {
+                // StructRecord attribute is applied, don't need to generate anything.
+                return false;
+            }
+
             // If the ToString() is already generated, nothing we can do here.
             if (GetExistingMembersToGenerate(typeSymbol).Length != 0)
             {
@@ -105,11 +111,11 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
         }
 
         /// <inheritdoc/>
-        protected override string GenerateClassWithNewMembers(INamedTypeSymbol typeSymbol)
+        protected override string GenerateClassWithNewMembers(INamedTypeSymbol typeSymbol, Compilation compilation)
         {
             string classOrStruct = typeSymbol.IsValueType ? "struct" : "class";
             var body = GenerateBody(typeSymbol);
-            
+
             return _typeTemplate
                 .ReplaceTypeNameInTemplate(typeSymbol)
                 .Replace("$$CLASS_OR_STRUCT$$", classOrStruct)

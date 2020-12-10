@@ -1,7 +1,11 @@
 ﻿using FluentAssertions;
+
 using NUnit.Framework;
 
-namespace StructRecordGenerator.Tests
+using StructRecordGenerators.Analyzers;
+using StructRecordGenerators.Generators;
+
+namespace StructRecordGenerators.Tests
 {
     [TestFixture]
     public class TestStructEqualityGenerator_Diagnostics

@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace StructRecordGenerator
+namespace StructRecordGenerators.Generators
 {
     [Generator]
     public class StructEqualityGenerator : TypeMembersGenerator
@@ -86,14 +86,20 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right)
         }
 
         /// <inheritdoc />
-        public override bool CanGenerateBody(INamedTypeSymbol typeSymbol)
+        public override bool CanGenerateBody(INamedTypeSymbol typeSymbol, Compilation? compilation)
         {
+            if (compilation != null && StructRecordGenerator.HasStructRecordAttribute(typeSymbol, compilation))
+            {
+                // StructRecord attribute is applied, don't need to generate anything.
+                return false;
+            }
+
             // 5 is the number of equality members.
             return GetExistingMembersToGenerate(typeSymbol).Length < 5;
         }
 
         /// <inheritdoc />
-        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol)
+        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol, Compilation compilation)
         {
             return GenerateEquality(symbol);
         }
@@ -161,7 +167,7 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right)
                 // The first group is the group of fields that support operator == and the second group that doesn't.
                 var membersWithMeta = fieldsOrProps.Select(p =>
                 {
-                    var type = p is IFieldSymbol fs ? fs.Type : (p is IPropertySymbol ps ? ps.Type : null);
+                    var type = p is IFieldSymbol fs ? fs.Type : p is IPropertySymbol ps ? ps.Type : null;
                     var supportOperatorEquals = type?.IsOperatorEqualsSupported() ?? false;
                     return (symbol: p, type, name: p.Name, supportOperatorEquals);
                 }).ToList();

@@ -6,7 +6,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 
-namespace StructRecordGenerator
+namespace StructRecordGenerators.Analyzers
 {
     /// <summary>
     /// A common analyzer that yields diagnostics if the source code is invalid (like if the struct is not marked 'partial'.
@@ -35,7 +35,7 @@ namespace StructRecordGenerator
             defaultSeverity: DiagnosticSeverity.Info, // I don't think this is super critical, so lets keep it as Info
             isEnabledByDefault: true);
 
-        public static bool TryCreateStructIsNotPartialDiagnostic(TypeDeclarationSyntax syntax, INamedTypeSymbol symbol, CancellationToken token, [NotNullWhen(true)]out Diagnostic? diagnostic)
+        public static bool TryCreateStructIsNotPartialDiagnostic(TypeDeclarationSyntax syntax, INamedTypeSymbol symbol, CancellationToken token, [NotNullWhen(true)] out Diagnostic? diagnostic)
         {
             if (!symbol.IsPartial(token))
             {
@@ -50,7 +50,7 @@ namespace StructRecordGenerator
 
         public static List<Diagnostic> GetMembersAlreadyExistsDiagnostics(string typeName, IEnumerable<IMethodSymbol> existingMethods)
         {
-            return existingMethods.Select(member => 
+            return existingMethods.Select(member =>
                     Diagnostic.Create(StructAlreadyImplementsEqualityMemberlDiagnostic,
                                       location: member.DeclaringSyntaxReferences.First().GetSyntax().GetLocation(),
                                       typeName,

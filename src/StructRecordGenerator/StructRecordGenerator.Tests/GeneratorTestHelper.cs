@@ -7,7 +7,7 @@ using System.Linq;
 using System.Reflection;
 using Xunit.Abstractions;
 
-namespace StructRecordGenerator.Tests
+namespace StructRecordGenerators.Tests
 {
     public class NUnitTestOutputHelper : ITestOutputHelper
     {

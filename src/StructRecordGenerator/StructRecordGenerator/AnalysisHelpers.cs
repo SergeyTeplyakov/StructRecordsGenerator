@@ -1,8 +1,7 @@
 ﻿using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace StructRecordGenerator
+namespace StructRecordGenerators
 {
-
     public static class AnalysisHelpers
     {
         public static bool IsGetSetAutoProperty(this BasePropertyDeclarationSyntax property)

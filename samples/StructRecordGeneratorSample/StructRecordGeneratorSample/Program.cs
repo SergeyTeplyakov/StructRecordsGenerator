@@ -87,9 +87,10 @@ namespace StructRecordGeneratorSample
     [StructGenerators.StructRecord]
     public readonly partial struct MyStruct
     {
-        public readonly int X;
+        public readonly double X;
         public readonly int Y;
         public readonly int Z;
+        public int Foo => 42;
         static readonly string _staticProperty;
     }
 
@@ -99,7 +100,8 @@ namespace StructRecordGeneratorSample
         static void Main(string[] args)
         {
             MyStruct ms = default;
-            ms.WithX
+            var newValue = ms.WithX(42.0);
+            bool r = newValue == ms; // should be false!
         }
 
 

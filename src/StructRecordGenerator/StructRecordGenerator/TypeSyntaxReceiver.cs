@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 
-namespace StructRecordGenerator
+namespace StructRecordGenerators
 {
     [Flags]
     public enum GeneratedTargetTypeKinds

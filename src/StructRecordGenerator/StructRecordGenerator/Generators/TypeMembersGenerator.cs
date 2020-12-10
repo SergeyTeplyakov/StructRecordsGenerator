@@ -3,13 +3,15 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
 
+using StructRecordGenerators.Analyzers;
+
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
 using static Microsoft.CodeAnalysis.CSharp.SyntaxFactory;
 
-namespace StructRecordGenerator
+namespace StructRecordGenerators.Generators
 {
     public abstract class TypeMembersGenerator : ISourceGenerator
     {
@@ -46,7 +48,7 @@ namespace StructRecordGenerator
             }
 
             var (attributeName, attributeText) = GetAttribute();
-            
+
             // add the attribute text
             context.AddSource(attributeName, SourceText.From(attributeText, Encoding.UTF8));
 
@@ -85,10 +87,10 @@ namespace StructRecordGenerator
                 {
                     context.ReportDiagnostic(d);
                 }
-
-                if (CanGenerateBody(symbol))
+                
+                if (CanGenerateBody(symbol, compilation))
                 {
-                    var typeDeclaration = GenerateClassWithNewMembers(symbol);
+                    var typeDeclaration = GenerateClassWithNewMembers(symbol, compilation);
 
                     // The struct can be in a top-level (i.e. global) namespace.
                     // Adding namespace only when a struct is declared in one.
@@ -107,11 +109,11 @@ namespace StructRecordGenerator
             }
         }
 
-        protected abstract string GenerateClassWithNewMembers(INamedTypeSymbol symbol);
+        protected abstract string GenerateClassWithNewMembers(INamedTypeSymbol symbol, Compilation compilation);
 
         public abstract IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol);
 
-        public abstract bool CanGenerateBody(INamedTypeSymbol typeSymbol);
+        public abstract bool CanGenerateBody(INamedTypeSymbol typeSymbol, Compilation? compilation);
 
         public static SymbolDisplayFormat FullyQualifiedFormat { get; } =
             new SymbolDisplayFormat(

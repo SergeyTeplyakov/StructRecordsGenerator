@@ -8,7 +8,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading;
 
-namespace StructRecordGenerator
+namespace StructRecordGenerators
 {
     public static class SymbolAnalysisHelpers
     {
@@ -32,7 +32,7 @@ namespace StructRecordGenerator
         /// Returns true if a given <paramref name="method"/> is an implementation of an interface member.
         /// </summary>
         public static bool IsInterfaceImplementation(this IMethodSymbol method)
-            => IsInterfaceImplementation(method, out _);
+            => method.IsInterfaceImplementation(out _);
 
         /// <summary>
         /// Returns true if a given <paramref name="method"/> is an implementation of an interface member.
@@ -91,20 +91,37 @@ namespace StructRecordGenerator
         public static bool IsObjectToStringOverride(this IMethodSymbol methodSymbol) => methodSymbol.IsOverride && methodSymbol.Name == nameof(ToString);
 
         public static bool IsObjectGetHashCodeOverride(this IMethodSymbol methodSymbol) => methodSymbol.IsOverride && methodSymbol.Name == nameof(GetHashCode);
-        
-        public static bool IsIEqualityEquals(this IMethodSymbol methodSymbol) => (methodSymbol.IsInterfaceImplementation() && methodSymbol.Name == nameof(Equals));
-        
+
+        public static bool IsIEqualityEquals(this IMethodSymbol methodSymbol) => methodSymbol.IsInterfaceImplementation() && methodSymbol.Name == nameof(Equals);
+
         public static bool IsEqualityOperator(this IMethodSymbol methodSymbol) => methodSymbol.MethodKind == MethodKind.UserDefinedOperator && methodSymbol.Name is "op_Equality";
-        
+
         public static bool IsInequalityOperator(this IMethodSymbol methodSymbol) => methodSymbol.MethodKind == MethodKind.UserDefinedOperator && methodSymbol.Name is "op_Inequality";
+
+        public static bool IsClone(this IMethodSymbol methodSymbol) => methodSymbol.Name == "Clone" && methodSymbol.Parameters.IsEmpty;
+
+        public static bool HasCloneMethod(this INamedTypeSymbol type) => type.GetMembers().Any(m => m is IMethodSymbol ms && ms.IsClone());
+
+        public static bool HasConstructorWith(this INamedTypeSymbol type, List<ISymbol> arguments)
+        {
+            return type.GetMembers().Any(m => m is IMethodSymbol ms && ms.MethodKind == MethodKind.Constructor && ms.IsConstructorWith(arguments));
+        }
+
+        public static bool IsConstructorWith(this IMethodSymbol methodSymbol, List<ISymbol> arguments)
+        {
+#pragma warning disable RS1024 // Compare symbols correctly
+            return methodSymbol.Parameters.Select(p => p.Type)
+                .SequenceEqual(arguments.Select(a => a.GetSymbolType()));
+#pragma warning restore RS1024 // Compare symbols correctly
+        }
 
         public static bool IsEqualityMember(this IMethodSymbol methodSymbol)
         {
-            return IsObjectEqualsOverride(methodSymbol) ||
-                IsObjectGetHashCodeOverride(methodSymbol) ||
-                IsIEqualityEquals(methodSymbol) ||
-                IsEqualityOperator(methodSymbol) ||
-                IsInequalityOperator(methodSymbol);
+            return methodSymbol.IsObjectEqualsOverride() ||
+                methodSymbol.IsObjectGetHashCodeOverride() ||
+                methodSymbol.IsIEqualityEquals() ||
+                methodSymbol.IsEqualityOperator() ||
+                methodSymbol.IsInequalityOperator();
         }
 
         public static List<ISymbol> GetNonStaticFieldsAndProperties(this INamedTypeSymbol type, bool includeAutoPropertiesOnly)
@@ -137,15 +154,19 @@ namespace StructRecordGenerator
 
         public static string ToFullyQualifiedDisplayString(this ISymbol symbol)
         {
-            var type = symbol switch
+            var type = symbol.GetSymbolType();
+            return type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        }
+
+        public static ITypeSymbol GetSymbolType(this ISymbol symbol)
+        {
+            return symbol switch
             {
                 ITypeSymbol ts => ts,
                 IFieldSymbol fs => fs.Type,
                 IPropertySymbol ps => ps.Type,
                 _ => throw new InvalidOperationException($"Unknown symbol type '{symbol.GetType()}'"),
             };
-
-            return type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
         }
 
         public static string ToMinimallyQualifiedFormat(this INamedTypeSymbol type)
