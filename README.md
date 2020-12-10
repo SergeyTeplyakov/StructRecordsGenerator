@@ -45,7 +45,7 @@ The next set of generators are used by the StructRecord generator, but can be us
 
 
 # Example
-![Demo](docs/images/StructRecordExample.gif "Demo")
+![Demo](docs/Images/StructRecordExample.gif "Demo")
 
 # Other work
 TBD
