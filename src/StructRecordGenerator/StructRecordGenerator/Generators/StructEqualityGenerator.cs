@@ -99,7 +99,7 @@ public static bool operator !=($$STRUCT_NAME$$ left, $$STRUCT_NAME$$ right)
         }
 
         /// <inheritdoc />
-        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol, Compilation compilation)
+        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol, Compilation compilation, INamedTypeSymbol attributeSymbol)
         {
             return GenerateEquality(symbol);
         }

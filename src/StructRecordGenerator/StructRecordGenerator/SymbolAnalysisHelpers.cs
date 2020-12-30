@@ -14,12 +14,18 @@ namespace StructRecordGenerators
     {
         public static bool HasAttribute(this ISymbol? symbol, INamedTypeSymbol attributeSymbol)
         {
+            return symbol.TryGetAttribute(attributeSymbol) != null;
+        }
+
+        public static AttributeData? TryGetAttribute(this ISymbol? symbol, INamedTypeSymbol attributeSymbol)
+        {
             if (symbol == null)
             {
-                return false;
+                return null;
             }
 
-            return symbol.GetAttributes().Any(ad => ad.AttributeClass?.Equals(attributeSymbol, SymbolEqualityComparer.Default) == true);
+            var result = symbol.GetAttributes().FirstOrDefault(ad => ad.AttributeClass?.Equals(attributeSymbol, SymbolEqualityComparer.Default) == true);
+            return result;
         }
 
         public static bool IsPartial(this ITypeSymbol typeSymbol, CancellationToken cancellationToken)

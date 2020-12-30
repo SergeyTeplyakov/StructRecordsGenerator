@@ -93,11 +93,11 @@ public $$STRUCT_NAME$$ Clone()
         }
 
         /// <inheritdooc />
-        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol, Compilation compilation)
+        protected override string GenerateClassWithNewMembers(INamedTypeSymbol symbol, Compilation compilation, INamedTypeSymbol attributeSymbol)
         {
             string recordMembers = GenerateRecordMembers(symbol);
             string equalityMembers = GenerateEqualityMembers(symbol);
-            string toStringMembers = GenerateToStringMembers(symbol);
+            string toStringMembers = GenerateToStringMembers(symbol, attributeSymbol);
 
             string result = _classTemplate
                 .ReplaceTypeNameInTemplate(symbol)
@@ -206,11 +206,11 @@ public $$STRUCT_NAME$$ Clone()
             return string.Empty;
         }
 
-        private string GenerateToStringMembers(INamedTypeSymbol symbol)
+        private string GenerateToStringMembers(INamedTypeSymbol symbol, INamedTypeSymbol attributeSymbol)
         {
             if (_toStringGenerator.CanGenerateBody(symbol, compilation: null))
             {
-                return _toStringGenerator.GenerateBody(symbol);
+                return _toStringGenerator.GenerateBody(symbol, attributeSymbol);
             }
 
             return string.Empty;

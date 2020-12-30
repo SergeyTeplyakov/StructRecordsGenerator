@@ -10,6 +10,22 @@ namespace StructRecordGenerators.Tests
     public class TestToStringGenerator
     {
         [Test]
+        public void PrintTypeNameIsFalse()
+        {
+            string code = @"
+[StructGenerators.GenerateToString(PrintTypeName = false)]
+public partial struct MyStruct
+{
+}
+";
+
+            var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
+            var output = generatorTestHelper.GetGeneratedOutput(code);
+
+            output.Should().Contain(@"// sb.Append(""MyStruct"");");
+        }
+        
+        [Test]
         public void StructWithNoFields()
         {
             string code = @"
@@ -21,7 +37,8 @@ public partial struct MyStruct
 
             var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
             var output = generatorTestHelper.GetGeneratedOutput(code);
-
+            
+            output.Should().Contain(@"sb.Append(""MyStruct"");");
             output.Should().Contain("private bool PrintMembers(StringBuilder");
         }
 

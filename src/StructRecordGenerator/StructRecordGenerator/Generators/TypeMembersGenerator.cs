@@ -90,7 +90,7 @@ namespace StructRecordGenerators.Generators
                 
                 if (CanGenerateBody(symbol, compilation))
                 {
-                    var typeDeclaration = GenerateClassWithNewMembers(symbol, compilation);
+                    var typeDeclaration = GenerateClassWithNewMembers(symbol, compilation, attributeSymbol);
 
                     // The struct can be in a top-level (i.e. global) namespace.
                     // Adding namespace only when a struct is declared in one.
@@ -109,7 +109,7 @@ namespace StructRecordGenerators.Generators
             }
         }
 
-        protected abstract string GenerateClassWithNewMembers(INamedTypeSymbol symbol, Compilation compilation);
+        protected abstract string GenerateClassWithNewMembers(INamedTypeSymbol symbol, Compilation compilation, INamedTypeSymbol attributeSymbol);
 
         public abstract IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol);
 

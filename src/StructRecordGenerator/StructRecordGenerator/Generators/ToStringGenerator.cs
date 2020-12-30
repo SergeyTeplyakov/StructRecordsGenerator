@@ -1,10 +1,51 @@
 ﻿using Microsoft.CodeAnalysis;
 
+using System;
 using System.Linq;
 using System.Text;
 
 namespace StructRecordGenerators.Generators
 {
+    [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+    internal sealed class GenerateToStringAttribute : Attribute
+    {
+        /// <summary>
+        /// If true, the type name will be printed as part of ToString result.
+        /// </summary>
+        public bool PrintTypeName { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Controls the behavior of ToString method for a member.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+    internal sealed class ToStringImplAttribute : Attribute
+    {
+        /// <summary>
+        /// If true, then the collection is printed by calling ToString on a member instead of printing the content of the collection.
+        /// </summary>
+        public bool LegacyCollectionsBehavior { get; set; }
+
+        /// <summary>
+        /// If > 0 then the string representation of a member will be trimmed.
+        /// </summary>
+        public int Limit { get; set; }
+
+        /// <summary>
+        /// If true, the member won't be printed as part inside ToString implementation.
+        /// </summary>
+        public bool Skip { get; set; }
+    }
+
+    public class FooBar
+    {
+        [ToStringImpl(Limit = 10_000, LegacyCollectionsBehavior = true)]
+        public int X { get; set; }
+        
+        [ToStringImpl(Skip = true)]
+        public int Y { get; set; }
+    }
+
     [Generator]
     public class ToStringGenerator : TypeMembersGenerator
     {
@@ -15,6 +56,32 @@ namespace StructGenerators
     [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
     internal sealed class GenerateToStringAttribute : Attribute
     {
+        /// <summary>
+        /// If true, the type name will be printed as part of ToString result.
+        /// </summary>
+        public bool PrintTypeName { get; set; } = true;
+    }
+
+    /// <summary>
+    /// Controls the behavior of a generated ToString method for a given member.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+    internal sealed class ToStringImplAttribute : Attribute
+    {
+        /// <summary>
+        /// If true, then the collection is printed by calling ToString on a member instead of printing the content of the collection.
+        /// </summary>
+        public bool LegacyCollectionsBehavior { get; set; }
+
+        /// <summary>
+        /// If > 0 then the string representation of a member will be trimmed.
+        /// </summary>
+        public int Limit { get; set; }
+
+        /// <summary>
+        /// If true, the member won't be printed as part inside ToString implementation.
+        /// </summary>
+        public bool Skip { get; set; }
     }
 }
 ";
@@ -33,7 +100,9 @@ partial $$CLASS_OR_STRUCT$$ $$STRUCT_NAME$$
 public override string ToString()
 {
     var sb = new StringBuilder();
-    sb.Append(""$$TYPE_NAME$$"");
+    
+    $$PRINT_BOODY_TYPE_NAME_PREFIX$$sb.Append(""$$TYPE_NAME$$"");
+
     sb.Append("" { "");
 
     if (PrintMembers(sb))
@@ -58,12 +127,41 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
 
         }
 
-        public string GenerateBody(INamedTypeSymbol typeSymbol)
+        private bool NeedToPrintTypeName(INamedTypeSymbol typeSymbol, INamedTypeSymbol attributeSymbol)
+        {
+            var attribute = typeSymbol.TryGetAttribute(attributeSymbol)!;
+            TypedConstant? typeConstraint = null;
+            
+            attribute.NamedArguments.FirstOrDefault(a =>
+            {
+                var result = a.Key == "PrintTypeName";
+                if (result)
+                {
+                    typeConstraint = a.Value;
+                    return true;
+                }
+
+                return false;
+            });
+            
+            if (typeConstraint is not null && typeConstraint.Value.Value is false)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        public string GenerateBody(INamedTypeSymbol typeSymbol, INamedTypeSymbol attributeSymbol)
         {
             string modifier = typeSymbol.IsValueType || typeSymbol.IsSealed ? "private" : "protected virtual";
+
+            string typeNamePrintPrefix = NeedToPrintTypeName(typeSymbol, attributeSymbol) ? string.Empty : "// ";
+
             var body = _bodyTemplate
                 .Replace($"$$TYPE_NAME$$", typeSymbol.Name)
-                .Replace("$$MODIFIER$$", modifier);
+                .Replace("$$MODIFIER$$", modifier)
+                .Replace("$$PRINT_BOODY_TYPE_NAME_PREFIX$$", typeNamePrintPrefix);
 
             var fieldsAndProperties = typeSymbol.GetNonStaticFieldsAndProperties(includeAutoPropertiesOnly: false);
 
@@ -111,10 +209,10 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
         }
 
         /// <inheritdoc/>
-        protected override string GenerateClassWithNewMembers(INamedTypeSymbol typeSymbol, Compilation compilation)
+        protected override string GenerateClassWithNewMembers(INamedTypeSymbol typeSymbol, Compilation compilation, INamedTypeSymbol attributeSymbol)
         {
             string classOrStruct = typeSymbol.IsValueType ? "struct" : "class";
-            var body = GenerateBody(typeSymbol);
+            var body = GenerateBody(typeSymbol, attributeSymbol);
 
             return _typeTemplate
                 .ReplaceTypeNameInTemplate(typeSymbol)
