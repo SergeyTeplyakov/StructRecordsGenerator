@@ -97,7 +97,7 @@ public $$STRUCT_NAME$$ Clone()
         {
             string recordMembers = GenerateRecordMembers(symbol);
             string equalityMembers = GenerateEqualityMembers(symbol);
-            string toStringMembers = GenerateToStringMembers(symbol, attributeSymbol);
+            string toStringMembers = GenerateToStringMembers(compilation, symbol, attributeSymbol);
 
             string result = _classTemplate
                 .ReplaceTypeNameInTemplate(symbol)
@@ -206,11 +206,11 @@ public $$STRUCT_NAME$$ Clone()
             return string.Empty;
         }
 
-        private string GenerateToStringMembers(INamedTypeSymbol symbol, INamedTypeSymbol attributeSymbol)
+        private string GenerateToStringMembers(Compilation compilation, INamedTypeSymbol symbol, INamedTypeSymbol attributeSymbol)
         {
             if (_toStringGenerator.CanGenerateBody(symbol, compilation: null))
             {
-                return _toStringGenerator.GenerateBody(symbol, attributeSymbol);
+                return _toStringGenerator.GenerateBody(compilation, symbol, attributeSymbol);
             }
 
             return string.Empty;

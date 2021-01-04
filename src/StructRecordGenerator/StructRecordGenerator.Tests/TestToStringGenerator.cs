@@ -7,24 +7,8 @@ using StructRecordGenerators.Generators;
 namespace StructRecordGenerators.Tests
 {
     [TestFixture]
-    public class TestToStringGenerator
+    public partial class TestToStringGenerator
     {
-        [Test]
-        public void PrintTypeNameIsFalse()
-        {
-            string code = @"
-[StructGenerators.GenerateToString(PrintTypeName = false)]
-public partial struct MyStruct
-{
-}
-";
-
-            var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
-            var output = generatorTestHelper.GetGeneratedOutput(code);
-
-            output.Should().Contain(@"// sb.Append(""MyStruct"");");
-        }
-        
         [Test]
         public void StructWithNoFields()
         {
@@ -38,7 +22,7 @@ public partial struct MyStruct
             var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
             var output = generatorTestHelper.GetGeneratedOutput(code);
             
-            output.Should().Contain(@"sb.Append(""MyStruct"");");
+            output.Should().Contain(@"sb.Append(""MyStruct "");");
             output.Should().Contain("private bool PrintMembers(StringBuilder");
         }
 
@@ -88,7 +72,24 @@ public partial struct MyStruct
             var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
             var output = generatorTestHelper.GetGeneratedOutput(code);
 
-            output.Should().Contain("_s.ToString()");
+            output.Should().Contain("sb.Append((object)_s)");
+        }
+
+        [Test]
+        public void ReferenceTypeFieldShouldHaveCast()
+        {
+            string code = @"
+[StructGenerators.GenerateToString]
+public partial struct MyStruct
+{
+    private readonly string _s;
+}
+";
+
+            var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
+            var output = generatorTestHelper.GetGeneratedOutput(code);
+
+            output.Should().Contain("(object)_s");
         }
 
         [Test]
@@ -155,8 +156,8 @@ namespace X {
             var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
             var output = generatorTestHelper.GetGeneratedOutput(code);
 
-            output.Should().Contain("_s.ToString()");
-            output.Should().NotContain("_staticS.ToString()");
+            output.Should().Contain("Append((object)_s)");
+            output.Should().NotContain("Append((object)_staticS)");
         }
 
         [Test]
@@ -179,9 +180,10 @@ namespace X {
             var output = generatorTestHelper.GetGeneratedOutput(code);
 
             output.Should().Contain("ToString()");
-            output.Should().Contain("_t1.ToString()");
-            output.Should().Contain("_t5.ToString()");
-            output.Should().NotContain("_staticS.ToString()");
+            // No casts for generics! This will cause boxing if T1 is value type, I guess.
+            output.Should().Contain("Append(_t1?.ToString())");
+            output.Should().Contain("Append(_t5?.ToString())");
+            output.Should().NotContain("Append(_staticS)");
         }
     }
 }

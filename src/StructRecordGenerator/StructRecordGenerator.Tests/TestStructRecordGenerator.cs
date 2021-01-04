@@ -118,7 +118,7 @@ namespace X {
             var generatorTestHelper = new GeneratorTestHelper<StructRecordGenerator>();
             var output = generatorTestHelper.GetGeneratedOutput(code);
 
-            output.Should().Contain("_s.ToString()");
+            output.Should().Contain("Append((object)_s)");
             output.Should().NotContain("_staticS.ToString()");
         }
 
@@ -142,8 +142,8 @@ namespace X {
             var output = generatorTestHelper.GetGeneratedOutput(code);
 
             output.Should().Contain("ToString()");
-            output.Should().Contain("_t1.ToString()");
-            output.Should().Contain("_t5.ToString()");
+            output.Should().Contain("_t1?.ToString()");
+            output.Should().Contain("_t5?.ToString()");
             output.Should().NotContain("_staticS.ToString()");
             output.Should().NotContain("$$TYPE_NAME$$");
         }

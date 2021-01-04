@@ -34,7 +34,7 @@ namespace StructRecordGenerators.Generators
         /// <inheritdoc />
         public void Execute(GeneratorExecutionContext context)
         {
-            // retreive the populated receiver 
+            // Retrieve the populated receiver 
             if (context.SyntaxReceiver is not TypeSyntaxReceiver receiver)
             {
                 return;

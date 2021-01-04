@@ -113,6 +113,24 @@ namespace StructRecordGenerators
             return type.GetMembers().Any(m => m is IMethodSymbol ms && ms.MethodKind == MethodKind.Constructor && ms.IsConstructorWith(arguments));
         }
 
+        public static bool ImplementsIEnumerableOfT(this ITypeSymbol type, [NotNullWhen(true)]out ITypeSymbol? elementType)
+        {
+            var allInterfaces = type.AllInterfaces;
+
+            elementType = null;
+
+            foreach (var i in allInterfaces)
+            {
+                if (i.MetadataName == "IEnumerable`1" && i.ContainingNamespace.ToString() == "System.Collections.Generic")
+                {
+                    elementType = i.TypeArguments[0];
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public static bool IsConstructorWith(this IMethodSymbol methodSymbol, List<ISymbol> arguments)
         {
 #pragma warning disable RS1024 // Compare symbols correctly

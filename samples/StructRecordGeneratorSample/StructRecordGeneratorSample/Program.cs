@@ -5,7 +5,8 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text;
-
+using StructGenerators;
+#nullable disable
 namespace StructRecordGeneratorSample
 {
     [StructGenerators.StructEquality]
@@ -83,15 +84,27 @@ namespace StructRecordGeneratorSample
     //}
 
 
+    //[StructGenerators.GenerateToString(MaxStringLength = 1000, PrintTypeName = false)]
+    //public readonly partial struct CustomRecord
+    //{
+    //    [StructGenerators.ToStringImpl(Skip = true)]
+    //    public readonly double X;
+    //    public readonly int Y;
+    //    public readonly int Z;
+    //    public int Foo => 42;
+    //    static readonly string _staticProperty;
+    //}
 
-    [StructGenerators.StructRecord]
-    public readonly partial struct MyStruct
+
+    public record CustomRecord<T>
     {
-        public readonly double X;
-        public readonly int Y;
-        public readonly int Z;
-        public int Foo => 42;
-        static readonly string _staticProperty;
+        public T Value { get; set; }
+    }
+
+    [GenerateToString]
+    public partial class CustomClass<T>
+    {
+        public T Value { get; set; }
     }
 
     class Program
@@ -99,11 +112,34 @@ namespace StructRecordGeneratorSample
 
         static void Main(string[] args)
         {
-            MyStruct ms = default;
-            var newValue = ms.WithX(42.0);
-            bool r = newValue == ms; // should be false!
+            var cs = new CustomClass<int>();
+            // No allocations here
+            Console.WriteLine(cs.ToString());
+
+            var cr = new CustomRecord<int>();
+            // cr.ToString() calls StringBuilder.Append(Value)
+            // that causes a boxing allocation!
+            Console.WriteLine(cr.ToString());
+
+            //var ms = new MyStruct2();
+            //Console.WriteLine(ms);
         }
 
 
     }
 }
+
+
+/*
+ *     [GenerateToString]
+    public partial class CustomClass<T>
+    {
+        public string[] S = new[] {"1", null, "2"};
+        
+        public T Value { get; set; }
+        
+        [ToStringImpl(Skip = true)]
+        public int Ignore { get; set; }
+    }
+
+ * */
