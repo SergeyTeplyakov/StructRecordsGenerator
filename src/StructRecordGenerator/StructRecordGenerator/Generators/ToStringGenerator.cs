@@ -2,42 +2,15 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using Microsoft.CodeAnalysis.Text;
+using StructGenerators;
+using StructRecordGenerators.Properties;
 
 namespace StructRecordGenerators.Generators
 {
-    [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-    internal sealed class GenerateToStringAttribute : Attribute
-    {
-        /// <summary>
-        /// If true, the type name will be printed as part of ToString result.
-        /// </summary>
-        public bool PrintTypeName { get; set; } = true;
-    }
-
-    /// <summary>
-    /// Controls the behavior of ToString method for a member.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-    internal sealed class ToStringImplAttribute : Attribute
-    {
-        /// <summary>
-        /// If true, then the collection is printed by calling ToString on a member instead of printing the content of the collection.
-        /// </summary>
-        public bool LegacyCollectionsBehavior { get; set; }
-
-        /// <summary>
-        /// A number of elements printed for a collection member.
-        /// </summary>
-        public int MaxElementCount { get; set; } = 100;
-
-        /// <summary>
-        /// If true, the member won't be printed as part inside ToString implementation.
-        /// </summary>
-        public bool Skip { get; set; }
-    }
-
     public record ToStringTypeOptions
     {
         /// <summary>
@@ -51,73 +24,32 @@ namespace StructRecordGenerators.Generators
         public int MaxStringLength { get; set; } = 1024;
     }
     
-    public record ToStringMemberOptions
+    internal record ToStringOptions
     {
-        public bool PrintTypeNameForCollections { get; set; } = false;
-        public int MaxElementCount{ get; set; } = 100;
-        public bool Skip { get; set; } = false;
+        public CollectionsBehavior CollectionsBehavior { get; set; } = CollectionsBehavior.PrintTypeNameAndCount;
+        public int CollectionCountLimit { get; set; } = 100;
+        public bool Skip { get; set; }
     }
 
     public class FooBar
     {
-        [ToStringImpl(MaxElementCount = 10_000, LegacyCollectionsBehavior = true)]
+        [ToStringBehavior(CollectionCountLimit = 10_000, CollectionsBehavior = CollectionsBehavior.PrintTypeNameAndCount)]
         public int X { get; set; }
         
-        [ToStringImpl(Skip = true)]
+        [ToStringBehavior(Skip = true)]
         public int Y { get; set; }
     }
 
     [Generator]
     public class ToStringGenerator : TypeMembersGenerator
     {
-        private const int DefaultMaxElementCount = 100;
+        private const int DefaultCollectionCountLimit = 100;
         
-        private const string attributeText = @"
-using System;
-namespace StructGenerators
-{
-    [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-    internal sealed class GenerateToStringAttribute : Attribute
-    {
-        /// <summary>
-        /// If true, the type name will be printed as part of ToString result.
-        /// </summary>
-        public bool PrintTypeName { get; set; } = true;
-
-        /// <summary>
-        /// The max length of a final string representation.
-        /// </summary>
-        public int MaxStringLength { get; set; } = 1024;
-    }
-
-    /// <summary>
-    /// Controls the behavior of a generated ToString method for a given member.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
-    internal sealed class ToStringImplAttribute : Attribute
-    {
-        /// <summary>
-        /// If true, then the collection is printed by calling ToString on a member instead of printing the content of the collection.
-        /// </summary>
-        public bool PrintTypeNameForCollections { get; set; }
-
-        /// <summary>
-        /// A number of elements printed for a collection member.
-        /// </summary>
-        public int MaxElementCount { get; set; } = 100;
-
-        /// <summary>
-        /// If true, the member won't be printed as part inside ToString implementation.
-        /// </summary>
-        public bool Skip { get; set; }
-    }
-}
-";
-
         private const string _typeTemplate = @"
 using System;
 using System.Linq;
 using System.Text;
+using StructGenerators;
 
 partial $$CLASS_OR_STRUCT$$ $$STRUCT_NAME$$
 {
@@ -205,20 +137,23 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
                     var options = membersWithOptions[i].options;
                     if (memberSymbolsType.ImplementsIEnumerableOfT(out var elementType) &&
                         // Excluding string here!
-                        memberSymbolsType.SpecialType != SpecialType.System_String &&
-                        (options is null || !options.PrintTypeNameForCollections))
+                        memberSymbolsType.SpecialType != SpecialType.System_String)
                     {
-                        var limit = options?.MaxElementCount ?? DefaultMaxElementCount;
-                        sb.AppendLine($"sb.Append(\"{m.Name} (limit: {limit}) = \");");
-                        // Need to add 'e?.ToString()' for reference types only.
-                        string optionalNullabilityMark = elementType.IsReferenceType ? "?" : string.Empty;
-                        // Printing the content of the collection (unless configured to use the legacy behavior)
-                        sb.AppendLine($"if ({m.Name} is not null)")
-                            .AppendLine("{")
-                            .AppendLine("sb.Append(\"[\");")
-                            .AppendLine($"sb.Append(string.Join(\", \", {m.Name}.Take({limit}).Select(e => e{optionalNullabilityMark}.ToString())));")
-                            .AppendLine("sb.Append(\"]\");")
-                            .AppendLine("}");
+                        var behavior = options?.CollectionsBehavior ?? CollectionsBehavior.PrintTypeNameAndCount;
+                        var limit = options?.CollectionCountLimit ?? DefaultCollectionCountLimit;
+                        // Just delegate the logic 
+                        sb.AppendLine($"sb.PrintCollection({m.Name}, \"{m.Name}\", behavior: {nameof(CollectionsBehavior)}.{behavior}, limit: {limit});");
+
+                        //sb.AppendLine($"sb.Append(\"{m.Name} (limit: {limit}) = \");");
+                        //// Need to add 'e?.ToString()' for reference types only.
+                        //string optionalNullabilityMark = elementType.IsReferenceType ? "?" : string.Empty;
+                        //// Printing the content of the collection (unless configured to use the legacy behavior)
+                        //sb.AppendLine($"if ({m.Name} is not null)")
+                        //    .AppendLine("{")
+                        //    .AppendLine("sb.Append(\"[\");")
+                        //    .AppendLine($"sb.Append(string.Join(\", \", {m.Name}.Take({limit}).Select(e => e{optionalNullabilityMark}.ToString())));")
+                        //    .AppendLine("sb.Append(\"]\");")
+                        //    .AppendLine("}");
                     }
                     else
                     {
@@ -249,15 +184,15 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
             return body;
         }
 
-        private List<(ISymbol symbol, ToStringMemberOptions? options)> FilterOutSkippedMembers(Compilation compilation, List<ISymbol> fieldsAndProperties)
+        private List<(ISymbol symbol, ToStringOptions? options)> FilterOutSkippedMembers(Compilation compilation, List<ISymbol> fieldsAndProperties)
         {
-            INamedTypeSymbol attributeSymbol = compilation.GetTypeByMetadataName("StructGenerators.ToStringImplAttribute")!;
+            INamedTypeSymbol attributeSymbol = compilation.GetTypeByMetadataName("StructGenerators.ToStringBehaviorAttribute")!;
 
             return fieldsAndProperties.Select(symbol => (symbol, options: tryGetToStringImplOptions(symbol))).ToList();
 
-            ToStringMemberOptions? tryGetToStringImplOptions(ISymbol symbol)
+            ToStringOptions? tryGetToStringImplOptions(ISymbol symbol)
             {
-                var result = new ToStringMemberOptions();
+                var result = new ToStringOptions();
                 
                 var attribute = symbol.TryGetAttribute(attributeSymbol);
                 if (attribute == null)
@@ -267,17 +202,31 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
                 
                 foreach (var kvp in attribute.NamedArguments)
                 {
-                    if (kvp.Key == nameof(ToStringMemberOptions.PrintTypeNameForCollections))
+                    if (kvp.Key == nameof(ToStringBehaviorAttribute.CollectionsBehavior))
                     {
-                        result.PrintTypeNameForCollections = kvp.Value.Value is true;
+                        if (kvp.Value.Value is CollectionsBehavior behavior)
+                        {
+                            result.CollectionsBehavior = behavior;
+                        }
+                        else if (kvp.Value.Value is string s && Enum.TryParse(s, out behavior))
+                        {
+                            result.CollectionsBehavior = behavior;
+                        }
+                        else if (kvp.Value.Value is int value)
+                        {
+                            result.CollectionsBehavior = (CollectionsBehavior)value;
+                        }
                     }
-                    else if (kvp.Key == nameof(ToStringMemberOptions.Skip))
+                    else if (kvp.Key == nameof(ToStringBehaviorAttribute.Skip))
                     {
                         result.Skip = kvp.Value.Value is true;
                     }
-                    else if (kvp.Key == nameof(ToStringMemberOptions.MaxElementCount) && kvp.Value.Value is int limit)
+                    else if (kvp.Key == nameof(ToStringBehaviorAttribute.CollectionCountLimit))
                     {
-                        result.MaxElementCount = limit;
+                        if (kvp.Value.Value is int limit)
+                        {
+                            result.CollectionCountLimit = limit;
+                        }
                     }
                 }
                 
@@ -318,7 +267,13 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
         /// <inheritdoc/>
         protected override (string attributeName, string attributeText) GetAttribute()
         {
-            return ("GenerateToStringAttribute", attributeText);
+            return ("GenerateToStringAttribute", Resources.GenerateToStringAttributeFile);
+        }
+
+        protected override void AddAdditionalSources(in GeneratorExecutionContext context)
+        {
+            
+            context.AddSource("ToStringGenerationHelper", SourceText.From(Resources.ToStringGenerationHelper, Encoding.UTF8));
         }
 
         /// <inheritdoc/>

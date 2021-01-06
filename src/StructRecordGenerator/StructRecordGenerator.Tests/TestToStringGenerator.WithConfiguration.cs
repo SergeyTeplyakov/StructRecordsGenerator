@@ -33,10 +33,10 @@ public partial struct MyStruct
 [StructGenerators.GenerateToString]
 public partial struct MyStruct
 {
-    [StructGenerators.ToStringImpl(Skip = true)]
+    [StructGenerators.ToStringBehavior(Skip = true)]
     private readonly string _s;
     
-    [StructGenerators.ToStringImpl(Skip = true)]
+    [StructGenerators.ToStringBehavior(Skip = true)]
     public string S => _s;
 
     public string Y => _s;
@@ -58,21 +58,36 @@ public partial struct MyStruct
 [StructGenerators.GenerateToString]
 public partial struct MyStruct
 {
-    [StructGenerators.ToStringImpl(PrintTypeNameForCollections = true)]
     private readonly string[] _s;
     
     public string[] S => _s;
 
-    [StructGenerators.ToStringImpl(PrintTypeNameForCollections = false)]
+    [StructGenerators.ToStringBehavior(CollectionsBehavior = StructGenerators.CollectionsBehavior.PrintContent)]
     public int[] S2 => null;
 }
 ";
 
             var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
             var output = generatorTestHelper.GetGeneratedOutput(code);
-            output.Should().Contain("Append((object)_s)");
-            output.Should().Contain("S.Take(100).Select(");
-            output.Should().Contain("S2.Take(100).Select(");
+            output.Should().Contain("behavior: CollectionsBehavior.PrintContent");
+            output.Should().Contain("limit: 100");
+        }
+        
+        [Test]
+        public void SkipIsRespected()
+        {
+            string code = @"
+[StructGenerators.GenerateToString]
+public partial struct MyStruct
+{
+    [StructGenerators.ToStringBehavior(Skip = true)]
+    public int[] S2 => null;
+}
+";
+
+            var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
+            var output = generatorTestHelper.GetGeneratedOutput(code);
+            output.Should().NotContain("PrintCollection");
         }
 
         [Test]
@@ -82,14 +97,14 @@ public partial struct MyStruct
 [StructGenerators.GenerateToString(MaxStringLength = 142)]
 public partial struct MyStruct
 {
-    [StructGenerators.ToStringImpl(MaxElementCount = 99)]
+    [StructGenerators.ToStringBehavior(CollectionCountLimit = 99)]
     private readonly string[] _s;
 }
 ";
 
             var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
             var output = generatorTestHelper.GetGeneratedOutput(code);
-            output.Should().Contain("(limit: 99)");
+            output.Should().Contain(", limit: 99");
             output.Should().Contain("142");
         }
     }

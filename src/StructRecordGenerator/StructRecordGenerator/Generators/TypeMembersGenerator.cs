@@ -24,6 +24,10 @@ namespace StructRecordGenerators.Generators
 
         protected abstract (string attributeName, string attributeText) GetAttribute();
 
+        protected virtual void AddAdditionalSources(in GeneratorExecutionContext context)
+        {
+        }
+
         /// <inheritdoc />
         public void Initialize(GeneratorInitializationContext context)
         {
@@ -48,6 +52,7 @@ namespace StructRecordGenerators.Generators
             }
 
             var (attributeName, attributeText) = GetAttribute();
+            AddAdditionalSources(context);
 
             // add the attribute text
             context.AddSource(attributeName, SourceText.From(attributeText, Encoding.UTF8));
