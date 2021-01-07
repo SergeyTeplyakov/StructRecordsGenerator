@@ -42,6 +42,8 @@ The next set of generators are used by the StructRecord generator, but can be us
 
 # GenerateToString generator
 
+**The attribute is applicable for structs, classes and records.**
+
 `GenerateToString` generator can be used separately to generate record-like `ToString` implementation for any class or a struct. But unlike records, this generator is customizable:
 
 ```csharp
@@ -76,7 +78,6 @@ CustomClass { S (Count: 3) = [1, , 2], S2 (Count: 3) = System.String[], Value = 
 * Whether to skip a member in the generate `ToString` method via `ToStringBehavior(Skip = true)`.
 * The way a collection is printed via `ToStringBehavior(CollectionsBehavior)`. 
   The default behavior is `CollectionsBehavior.PrintTypeNameAndCount` when only the count and the type is printed. `CollectionsBehavior.PrintContent` allows printing the content. In this case you can control the number of elements printed via `CollectionCountLimit` property.
-
 
 # Diagnostics
 * **SRG001** (Warning) is emitted if the type is marked with one of the attributes but the type is not partial. In this case the generator just can't generate the partial definition.
