@@ -80,7 +80,7 @@ namespace StructRecordGenerators.Generators
                 string typeName = symbol.ToDisplayString(FullyQualifiedFormat);
 
                 // Warn if the struct or class is not partial.
-                if (StructGeneratorAnalyzer.TryCreateStructIsNotPartialDiagnostic(syntax, symbol, context.CancellationToken, out var diagnostic))
+                if (StructGeneratorAnalyzer.TryCreateTypeIsNotPartialDiagnostic(syntax, symbol, context.CancellationToken, out var diagnostic))
                 {
                     context.ReportDiagnostic(diagnostic);
                     return;

@@ -113,6 +113,13 @@ namespace StructRecordGenerators
             return type.GetMembers().Any(m => m is IMethodSymbol ms && ms.MethodKind == MethodKind.Constructor && ms.IsConstructorWith(arguments));
         }
 
+        public static bool IsRecord(this INamedTypeSymbol type)
+        {
+            // Not a perfect way, but the only one I've found so far!
+            return type.GetMembers().Any(x =>
+                x.Kind == SymbolKind.Property && x.Name == "EqualityContract" && x.IsImplicitlyDeclared);
+        }
+
         public static bool ImplementsIEnumerableOfT(this ITypeSymbol type, [NotNullWhen(true)]out ITypeSymbol? elementType)
         {
             var allInterfaces = type.AllInterfaces;

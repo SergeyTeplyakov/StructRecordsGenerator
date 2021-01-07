@@ -13,7 +13,7 @@ namespace StructRecordGeneratorSample
     {
         // The record prints S = System.String[]
         // Printing the content here by default instead!
-        [ToStringBehavior(CollectionsBehavior = CollectionsBehavior.PrintContent)]
+        [ToStringBehavior(CollectionsBehavior = CollectionsBehavior.PrintTypeNameAndCount, CollectionCountLimit = 5)]
         // Just a count by default.
         // IEnumerable<Type> for IEnumerable (based on the runtime type, not based on compile-time type).
         // Configure the separator.

@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis.Text;
@@ -141,19 +140,9 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
                     {
                         var behavior = options?.CollectionsBehavior ?? CollectionsBehavior.PrintTypeNameAndCount;
                         var limit = options?.CollectionCountLimit ?? DefaultCollectionCountLimit;
-                        // Just delegate the logic 
+                        
+                        // Just delegate the logic to PrintCollection helper
                         sb.AppendLine($"sb.PrintCollection({m.Name}, \"{m.Name}\", behavior: {nameof(CollectionsBehavior)}.{behavior}, limit: {limit});");
-
-                        //sb.AppendLine($"sb.Append(\"{m.Name} (limit: {limit}) = \");");
-                        //// Need to add 'e?.ToString()' for reference types only.
-                        //string optionalNullabilityMark = elementType.IsReferenceType ? "?" : string.Empty;
-                        //// Printing the content of the collection (unless configured to use the legacy behavior)
-                        //sb.AppendLine($"if ({m.Name} is not null)")
-                        //    .AppendLine("{")
-                        //    .AppendLine("sb.Append(\"[\");")
-                        //    .AppendLine($"sb.Append(string.Join(\", \", {m.Name}.Take({limit}).Select(e => e{optionalNullabilityMark}.ToString())));")
-                        //    .AppendLine("sb.Append(\"]\");")
-                        //    .AppendLine("}");
                     }
                     else
                     {
@@ -255,7 +244,8 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
         /// <inheritdoc/>
         protected override string GenerateClassWithNewMembers(INamedTypeSymbol typeSymbol, Compilation compilation, INamedTypeSymbol attributeSymbol)
         {
-            string classOrStruct = typeSymbol.IsValueType ? "struct" : "class";
+            
+            string classOrStruct = typeSymbol.IsValueType ? "struct" : (typeSymbol.IsRecord() ? "record" : "class");
             var body = GenerateBody(compilation, typeSymbol, attributeSymbol);
 
             return _typeTemplate
@@ -279,7 +269,9 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
         /// <inheritdoc/>
         public override IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol)
         {
-            return typeSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => m.IsObjectToStringOverride()).ToArray();
+            // Technically, records do have ToString method, but a user still can provide one.
+            // So we just exclude all implicitly declared members to allow the generators to re-generate them.
+            return typeSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => !m.IsImplicitlyDeclared && m.IsObjectToStringOverride()).ToArray();
         }
     }
 }

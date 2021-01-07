@@ -40,7 +40,7 @@ public partial struct MyStruct
             var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
-            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsEqualityMemberId);
+            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);
         }
 
         [Test]
@@ -57,7 +57,7 @@ public partial struct MyStruct
             var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
-            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsEqualityMemberId);
+            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);
         }
         
         [Test]
@@ -74,7 +74,7 @@ public partial struct MyStruct : System.IEquatable<MyStruct>
             var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
-            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsEqualityMemberId);
+            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);
         }
 
         [Test]
@@ -91,7 +91,7 @@ public partial struct MyStruct
             var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
-            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsEqualityMemberId);
+            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);
         }
 
         [Test]
@@ -108,7 +108,7 @@ public partial struct MyStruct
             var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
-            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsEqualityMemberId);
+            diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);
         }
     }
 }

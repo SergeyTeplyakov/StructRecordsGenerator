@@ -14,8 +14,8 @@ namespace StructRecordGenerators.Analyzers
     public class StructGeneratorAnalyzer
     {
         public const string StructMustBePartialDiagnosticDiagnosticId = "SRG001";
-        private const string Title = "A struct must be partial";
-        private const string Message = "A struct '{0}' must be partial";
+        private const string Title = "A type must be partial";
+        private const string Message = "A type '{0}' must be partial";
 
         private static readonly DiagnosticDescriptor StructMustBePartialDiagnostic = new DiagnosticDescriptor(
             StructMustBePartialDiagnosticDiagnosticId,
@@ -25,17 +25,17 @@ namespace StructRecordGenerators.Analyzers
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true);
 
-        public const string StructAlreadyImplementsEqualityMemberId = "SRG002";
+        public const string StructAlreadyImplementsMemberId = "SRG002";
 
-        public static readonly DiagnosticDescriptor StructAlreadyImplementsEqualityMemberlDiagnostic = new DiagnosticDescriptor(
-            StructAlreadyImplementsEqualityMemberId,
-            "A struct already implements equality member",
-            "A struct '{0}' already implements equality member '{1}'",
+        public static readonly DiagnosticDescriptor StructAlreadyImplementsEqualityMemberDiagnostic = new DiagnosticDescriptor(
+            StructAlreadyImplementsMemberId,
+            "A type already implements has a method",
+            "A type '{0}' already has method '{1}'",
             category: "Correctness",
             defaultSeverity: DiagnosticSeverity.Info, // I don't think this is super critical, so lets keep it as Info
             isEnabledByDefault: true);
 
-        public static bool TryCreateStructIsNotPartialDiagnostic(TypeDeclarationSyntax syntax, INamedTypeSymbol symbol, CancellationToken token, [NotNullWhen(true)] out Diagnostic? diagnostic)
+        public static bool TryCreateTypeIsNotPartialDiagnostic(TypeDeclarationSyntax syntax, INamedTypeSymbol symbol, CancellationToken token, [NotNullWhen(true)] out Diagnostic? diagnostic)
         {
             if (!symbol.IsPartial(token))
             {
@@ -51,7 +51,7 @@ namespace StructRecordGenerators.Analyzers
         public static List<Diagnostic> GetMembersAlreadyExistsDiagnostics(string typeName, IEnumerable<IMethodSymbol> existingMethods)
         {
             return existingMethods.Select(member =>
-                    Diagnostic.Create(StructAlreadyImplementsEqualityMemberlDiagnostic,
+                    Diagnostic.Create(StructAlreadyImplementsEqualityMemberDiagnostic,
                                       location: member.DeclaringSyntaxReferences.First().GetSyntax().GetLocation(),
                                       typeName,
                                       member.Name)).ToList();

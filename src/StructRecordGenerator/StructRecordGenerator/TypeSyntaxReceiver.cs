@@ -48,6 +48,11 @@ namespace StructRecordGenerators
             {
                 Candidates.Add(classDeclarationSyntax);
             }
+
+            if (_typeKinds.HasFlag(GeneratedTargetTypeKinds.Class) && syntaxNode is RecordDeclarationSyntax recordDeclarationSyntax && recordDeclarationSyntax.AttributeLists.Count > 0)
+            {
+                Candidates.Add(recordDeclarationSyntax);
+            }
         }
     }
 }
