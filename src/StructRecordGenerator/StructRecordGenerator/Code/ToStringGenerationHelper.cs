@@ -8,6 +8,9 @@ namespace StructGenerators
 {
     internal static class ToStringGenerationHelper
     {
+        /// <summary>
+        /// Adds a string representation of a given <paramref name="source"/> into <paramref name="sb"/> based on <paramref name="behavior"/>.
+        /// </summary>
         public static void PrintCollection<T>(this StringBuilder sb, IEnumerable<T> source, string name, CollectionsBehavior behavior, int limit)
         {
             int? count = null;

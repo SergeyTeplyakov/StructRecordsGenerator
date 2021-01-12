@@ -29,7 +29,7 @@ namespace StructRecordGenerators.Analyzers
 
         public static readonly DiagnosticDescriptor StructAlreadyImplementsEqualityMemberDiagnostic = new DiagnosticDescriptor(
             StructAlreadyImplementsMemberId,
-            "A type already implements has a method",
+            "A type already has a method",
             "A type '{0}' already has method '{1}'",
             category: "Correctness",
             defaultSeverity: DiagnosticSeverity.Info, // I don't think this is super critical, so lets keep it as Info

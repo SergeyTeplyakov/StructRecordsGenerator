@@ -25,6 +25,22 @@ public partial struct MyStruct
 
             output.Should().Contain(@"// sb.Append(""MyStruct "");");
         }
+        
+        [Test]
+        public void PrintTypeNameIsFalseByDefault()
+        {
+            string code = @"
+[StructGenerators.GenerateToString]
+public partial struct MyStruct
+{
+}
+";
+
+            var generatorTestHelper = new GeneratorTestHelper<ToStringGenerator>();
+            var output = generatorTestHelper.GetGeneratedOutput(code);
+
+            output.Should().Contain(@"// sb.Append(""MyStruct "");");
+        }
 
         [Test]
         public void SkipFieldsAndProperties()

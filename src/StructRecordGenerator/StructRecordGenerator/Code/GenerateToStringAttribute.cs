@@ -8,7 +8,7 @@ namespace StructGenerators
         /// <summary>
         /// If true, the type name will be printed as part of ToString result.
         /// </summary>
-        public bool PrintTypeName { get; set; } = true;
+        public bool PrintTypeName { get; set; } = false;
 
         /// <summary>
         /// The max length of a final string representation.
@@ -44,7 +44,7 @@ namespace StructGenerators
         public CollectionsBehavior CollectionsBehavior { get; set; } = CollectionsBehavior.PrintTypeNameAndCount;
         
         /// <summary>
-        /// A number of elements printed for a collection member (only used when <see cref="CollectionsBehavior"/> is <see cref="StructGenerators.CollectionsBehavior.PrintCount"/>.
+        /// A number of elements printed for a collection member (only used when <see cref="CollectionsBehavior"/> is <see cref="StructGenerators.CollectionsBehavior.PrintContent"/>.
         /// </summary>
         public int CollectionCountLimit { get; set; } = 100;
 

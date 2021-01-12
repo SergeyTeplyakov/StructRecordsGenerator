@@ -17,6 +17,16 @@ namespace StructRecordGenerators
             return symbol.TryGetAttribute(attributeSymbol) != null;
         }
 
+        public static bool HasAttributeUnsafe(this ISymbol? symbol, string attributeName)
+        {
+            if (symbol == null)
+            {
+                return false;
+            }
+
+            return symbol.GetAttributes().FirstOrDefault(ad => ad.AttributeClass?.Name.Contains(attributeName) == true) != null;
+        }
+
         public static AttributeData? TryGetAttribute(this ISymbol? symbol, INamedTypeSymbol attributeSymbol)
         {
             if (symbol == null)

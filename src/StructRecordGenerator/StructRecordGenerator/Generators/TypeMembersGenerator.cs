@@ -77,7 +77,7 @@ namespace StructRecordGenerators.Generators
             foreach (var (syntax, symbol) in annotatedStructs)
             {
                 // Need a full name because in one project there could be more than one struct with the same name.
-                string typeName = symbol.ToDisplayString(FullyQualifiedFormat);
+                string typeName = symbol.GetFullName();
 
                 // Warn if the struct or class is not partial.
                 if (StructGeneratorAnalyzer.TryCreateTypeIsNotPartialDiagnostic(syntax, symbol, context.CancellationToken, out var diagnostic))
@@ -96,7 +96,6 @@ namespace StructRecordGenerators.Generators
                 if (CanGenerateBody(symbol, compilation))
                 {
                     var typeDeclaration = GenerateClassWithNewMembers(symbol, compilation, attributeSymbol);
-
                     // The struct can be in a top-level (i.e. global) namespace.
                     // Adding namespace only when a struct is declared in one.
                     if (!symbol.ContainingNamespace.IsGlobalNamespace)
@@ -109,7 +108,8 @@ namespace StructRecordGenerators.Generators
                     var parsedOutput = ParseCompilationUnit(typeDeclaration);
 
                     string final = parsedOutput.NormalizeWhitespace().ToFullString();
-                    context.AddSource($"{typeName}_{GetType().Name}.cs", final);
+                    
+                    context.AddSource(symbol.GetGeneratedFileName(GetType().Name), final);
                 }
             }
         }
@@ -119,14 +119,5 @@ namespace StructRecordGenerators.Generators
         public abstract IMethodSymbol[] GetExistingMembersToGenerate(INamedTypeSymbol typeSymbol);
 
         public abstract bool CanGenerateBody(INamedTypeSymbol typeSymbol, Compilation? compilation);
-
-        public static SymbolDisplayFormat FullyQualifiedFormat { get; } =
-            new SymbolDisplayFormat(
-                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
-                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-                genericsOptions: SymbolDisplayGenericsOptions.None,
-                miscellaneousOptions:
-                    SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers);
-
     }
 }

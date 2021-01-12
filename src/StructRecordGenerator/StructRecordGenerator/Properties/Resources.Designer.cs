@@ -66,16 +66,34 @@ namespace StructRecordGenerators.Properties {
         ///namespace StructGenerators
         ///{
         ///    [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+        ///    internal sealed class GenerateStructEqualityAttribute : Attribute
+        ///    {
+        ///    }
+        ///}
+        ///.
+        /// </summary>
+        internal static string GenerateEqualityAttribute {
+            get {
+                return ResourceManager.GetString("GenerateEqualityAttribute", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to using System;
+        ///
+        ///namespace StructGenerators
+        ///{
+        ///    [AttributeUsage(AttributeTargets.Struct | AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
         ///    internal sealed class GenerateToStringAttribute : Attribute
         ///    {
         ///        /// &lt;summary&gt;
         ///        /// If true, the type name will be printed as part of ToString result.
         ///        /// &lt;/summary&gt;
-        ///        public bool PrintTypeNameAndCount { get; set; } = true;
-        ///    }
+        ///        public bool PrintTypeName { get; set; } = false;
         ///
-        ///    /// &lt;summary&gt;
-        ///    /// Defines a ToString behavior for collection fields and prop [rest of string was truncated]&quot;;.
+        ///        /// &lt;summary&gt;
+        ///        /// The max length of a final string representation.
+        ///       [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string GenerateToStringAttributeFile {
             get {
@@ -94,12 +112,10 @@ namespace StructRecordGenerators.Properties {
         ///{
         ///    internal static class ToStringGenerationHelper
         ///    {
-        ///        public static void PrintCollection&lt;T&gt;(this StringBuilder sb, IEnumerable&lt;T&gt; source, string name, CollectionsBehavior behavior, int limit)
-        ///        {
-        ///            sb.Append(name);
-        ///
-        ///            bool countAvailable = false;
-        ///            if  [rest of string was truncated]&quot;;.
+        ///        /// &lt;summary&gt;
+        ///        /// Adds a string representation of a given &lt;paramref name=&quot;source&quot;/&gt; into &lt;paramref name=&quot;sb&quot;/&gt; based on &lt;paramref name=&quot;behavior&quot;/&gt;.
+        ///        /// &lt;/summary&gt;
+        ///        public static void PrintCollection&lt;T&gt;(this Strin [rest of string was truncated]&quot;;.
         /// </summary>
         internal static string ToStringGenerationHelper {
             get {

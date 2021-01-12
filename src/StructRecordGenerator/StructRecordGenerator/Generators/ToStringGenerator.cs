@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using Microsoft.CodeAnalysis.Text;
@@ -12,15 +13,18 @@ namespace StructRecordGenerators.Generators
 {
     public record ToStringTypeOptions
     {
+        private static readonly bool DefaultPrintTypeName = new GenerateToStringAttribute().PrintTypeName;
+        private static readonly int DefaultMaxStringLength = new GenerateToStringAttribute().MaxStringLength;
+        
         /// <summary>
         /// If true, the type name will be printed as part of ToString result.
         /// </summary>
-        public bool PrintTypeName { get; set; } = true;
+        public bool PrintTypeName { get; set; } = DefaultPrintTypeName;
 
         /// <summary>
         /// The max length of a string representation.
         /// </summary>
-        public int MaxStringLength { get; set; } = 1024;
+        public int MaxStringLength { get; set; } = DefaultMaxStringLength;
     }
     
     internal record ToStringOptions
@@ -28,15 +32,6 @@ namespace StructRecordGenerators.Generators
         public CollectionsBehavior CollectionsBehavior { get; set; } = CollectionsBehavior.PrintTypeNameAndCount;
         public int CollectionCountLimit { get; set; } = 100;
         public bool Skip { get; set; }
-    }
-
-    public class FooBar
-    {
-        [ToStringBehavior(CollectionCountLimit = 10_000, CollectionsBehavior = CollectionsBehavior.PrintTypeNameAndCount)]
-        public int X { get; set; }
-        
-        [ToStringBehavior(Skip = true)]
-        public int Y { get; set; }
     }
 
     [Generator]
@@ -50,7 +45,7 @@ using System.Linq;
 using System.Text;
 using StructGenerators;
 
-partial $$CLASS_OR_STRUCT$$ $$STRUCT_NAME$$
+partial $$TYPE_DECLARATION_KEYWORD$$ $$TYPE_NAME$$
 {
     $$TYPE_MEMBERS$$
 }
@@ -76,6 +71,9 @@ public override string ToString()
     $$TO_STRING_RETURN_STATEMENT$$
 }
 
+/// <summary>
+/// Prints the content of the instance into a given string builder.
+/// </summary>
 $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
 {
     $$PRINT_MEMBERS_BODY$$
@@ -223,15 +221,21 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
             }
         }
 
+        public static bool HasGenerateToStringAttribute(INamedTypeSymbol symbol, Compilation compilation)
+        {
+            // I can't see a very simple way how to change the functionality when another generator will be used.
+            // For instance, the type marked with [StructRecord] and [GenerateToString]
+            // when StructRecordGenerator generator runs the attribute 'GenerateToStringAttribute'
+            // is not defined as part of the compilation, because the generators are isolated from each other.
+            // So there is no simple way to check inside generator 1 that generator 2 will be running as well.
+            // At least its not clear how to do in a fully correct symbol-based.
+            var attributeName = nameof(GenerateToStringAttribute).Replace("Attribute", string.Empty);
+            return symbol.HasAttributeUnsafe(attributeName);
+        }
+
         /// <inheritdoc/>
         public override bool CanGenerateBody(INamedTypeSymbol typeSymbol, Compilation? compilation)
         {
-            if (compilation != null && StructRecordGenerator.HasStructRecordAttribute(typeSymbol, compilation))
-            {
-                // StructRecord attribute is applied, don't need to generate anything.
-                return false;
-            }
-
             // If the ToString() is already generated, nothing we can do here.
             if (GetExistingMembersToGenerate(typeSymbol).Length != 0)
             {
@@ -244,12 +248,11 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
         /// <inheritdoc/>
         protected override string GenerateClassWithNewMembers(INamedTypeSymbol typeSymbol, Compilation compilation, INamedTypeSymbol attributeSymbol)
         {
-            
             string classOrStruct = typeSymbol.IsValueType ? "struct" : (typeSymbol.IsRecord() ? "record" : "class");
             var body = GenerateBody(compilation, typeSymbol, attributeSymbol);
 
             return _typeTemplate
-                .ReplaceTypeNameInTemplate(typeSymbol)
+                .ReplaceTypeNameAndKeywordInTemplate(typeSymbol)
                 .Replace("$$CLASS_OR_STRUCT$$", classOrStruct)
                 .Replace("$$TYPE_MEMBERS$$", body);
         }
@@ -257,12 +260,11 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
         /// <inheritdoc/>
         protected override (string attributeName, string attributeText) GetAttribute()
         {
-            return ("GenerateToStringAttribute", Resources.GenerateToStringAttributeFile);
+            return (nameof(GenerateToStringAttribute), Resources.GenerateToStringAttributeFile);
         }
 
         protected override void AddAdditionalSources(in GeneratorExecutionContext context)
         {
-            
             context.AddSource("ToStringGenerationHelper", SourceText.From(Resources.ToStringGenerationHelper, Encoding.UTF8));
         }
 
@@ -271,7 +273,13 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
         {
             // Technically, records do have ToString method, but a user still can provide one.
             // So we just exclude all implicitly declared members to allow the generators to re-generate them.
-            return typeSymbol.GetMembers().OfType<IMethodSymbol>().Where(m => !m.IsImplicitlyDeclared && m.IsObjectToStringOverride()).ToArray();
+            bool isRecord = typeSymbol.IsRecord();
+            return typeSymbol
+                .GetMembers()
+                .OfType<IMethodSymbol>()
+                // Checking whether the member is implicitly declared only for recrods.
+                .Where(m => (!isRecord || !m.IsImplicitlyDeclared) && m.IsObjectToStringOverride())
+                .ToArray();
         }
     }
 }

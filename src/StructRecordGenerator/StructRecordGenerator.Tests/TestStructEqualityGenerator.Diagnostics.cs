@@ -14,13 +14,13 @@ namespace StructRecordGenerators.Tests
         public void WarnOnNonPartialStruct()
         {
             string code = @"
-[StructGenerators.StructEquality]
+[StructGenerators.GenerateEquality]
 public struct MyStruct
 {
 }
 ";
 
-            var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
+            var generatorTestHelper = new GeneratorTestHelper<EqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
             diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructMustBePartialDiagnosticDiagnosticId);
@@ -30,14 +30,14 @@ public struct MyStruct
         public void WarnOnGetHashCode()
         {
             string code = @"
-[StructGenerators.StructEquality]
+[StructGenerators.GenerateEquality]
 public partial struct MyStruct
 {
     public override int GetHashCode() => 42;
 }
 ";
 
-            var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
+            var generatorTestHelper = new GeneratorTestHelper<EqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
             diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);
@@ -47,14 +47,14 @@ public partial struct MyStruct
         public void WarnOnEquals()
         {
             string code = @"
-[StructGenerators.StructEquality]
+[StructGenerators.GenerateEquality]
 public partial struct MyStruct
 {
     public override bool Equals(object other) => true;
 }
 ";
 
-            var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
+            var generatorTestHelper = new GeneratorTestHelper<EqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
             diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);
@@ -64,14 +64,14 @@ public partial struct MyStruct
         public void WarnOnEqualsFromInterface()
         {
             string code = @"
-[StructGenerators.StructEquality]
+[StructGenerators.GenerateEquality]
 public partial struct MyStruct : System.IEquatable<MyStruct>
 {
     public bool Equals(MyStruct other) => true;
 }
 ";
 
-            var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
+            var generatorTestHelper = new GeneratorTestHelper<EqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
             diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);
@@ -81,14 +81,14 @@ public partial struct MyStruct : System.IEquatable<MyStruct>
         public void WarnOnOperatorEquals()
         {
             string code = @"
-[StructGenerators.StructEquality]
+[StructGenerators.GenerateEquality]
 public partial struct MyStruct
 {
     public static bool operator ==(MyStruct left, MyStruct right) => true;
 }
 ";
 
-            var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
+            var generatorTestHelper = new GeneratorTestHelper<EqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
             diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);
@@ -98,14 +98,14 @@ public partial struct MyStruct
         public void WarnOnOperatorNotEquals()
         {
             string code = @"
-[StructGenerators.StructEquality]
+[StructGenerators.GenerateEquality]
 public partial struct MyStruct
 {
     public static bool operator !=(MyStruct left, MyStruct right) => true;
 }
 ";
 
-            var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
+            var generatorTestHelper = new GeneratorTestHelper<EqualityGenerator>();
             var diagnostics = generatorTestHelper.GetGeneratedDiagnostics(code);
 
             diagnostics.Should().Contain(d => d.Id == StructGeneratorAnalyzer.StructAlreadyImplementsMemberId);

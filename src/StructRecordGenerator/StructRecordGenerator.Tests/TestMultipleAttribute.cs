@@ -15,7 +15,7 @@ namespace StructRecordGenerators.Tests
         {
             string code = @"
 [StructGenerators.ToStringGenerator]
-[StructGenerators.StructEquality]
+[StructGenerators.GenerateEquality]
 public partial struct MyStruct
 {
     public readonly int X;
@@ -23,7 +23,7 @@ public partial struct MyStruct
 }
 ";
 
-            var generatorTestHelper = new GeneratorTestHelper<StructEqualityGenerator>();
+            var generatorTestHelper = new GeneratorTestHelper<EqualityGenerator>();
             var output = generatorTestHelper.GetGeneratedOutput(code);
 
             output.Should().Contain("Equals");

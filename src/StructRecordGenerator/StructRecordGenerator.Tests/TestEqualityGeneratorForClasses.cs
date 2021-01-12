@@ -7,14 +7,14 @@ using StructRecordGenerators.Generators;
 namespace StructRecordGenerators.Tests
 {
     [TestFixture]
-    public class TestStructEqualityGenerator
+    public class TestEqualityGeneratorForClasses
     {
         [Test]
-        public void StructWithNoFields()
+        public void ClassWithNoFields()
         {
             string code = @"
 [StructGenerators.GenerateEquality]
-public partial struct MyStruct
+public partial class MyClass
 {
 }
 ";
@@ -22,6 +22,8 @@ public partial struct MyStruct
             var generatorTestHelper = new GeneratorTestHelper<EqualityGenerator>();
             var output = generatorTestHelper.GetGeneratedOutput(code);
 
+            output.Should().Contain("EqualityContract");
+            output.Should().Contain("EqualityContract != other.EqualityContract");
             output.Should().Contain("Equals");
             output.Should().Contain("42");
         }
@@ -31,7 +33,7 @@ public partial struct MyStruct
         {
             string code = @"
 [StructGenerators.GenerateEquality]
-public partial struct MyStruct
+public partial class MyClass
 {
     private readonly string _s;
 }
@@ -52,7 +54,7 @@ public partial struct MyStruct
             // This should be fine: the generated code should just skip it.
             string code = @"
 [StructGenerators.GenerateEquality]
-public partial struct MyStruct
+public partial class MyClass
 {
     private readonly string _s;
     public override int GetHashCode() => 42;
@@ -70,9 +72,9 @@ public partial struct MyStruct
         {
             string code = @"
 [StructGenerators.GenerateEquality]
-public partial struct MyStruct
+public partial class MyClass
 {
-    private readonly  string _s;
+    private readonly string _s;
     private static string _staticS;
 }
 ";
@@ -90,7 +92,7 @@ public partial struct MyStruct
         {
             string code = @"
 [StructGenerators.GenerateEquality]
-public partial struct MyStruct<T1, T2, T3, T4, T5>
+public partial class MyClass<T1, T2, T3, T4, T5>
 {
     private readonly T1 _t1;
     private readonly T2 _t2;
@@ -114,18 +116,18 @@ public partial struct MyStruct<T1, T2, T3, T4, T5>
         {
             // BTW, the C# compiler devs explicitly decided not to go with this pattern for records to avoid code bloat.
             string code = @"
-public struct S1
+public class S1
 {
      public static bool operator ==(S1 left, S1 right) => true;
     public static bool operator !=(S1 left, S1 right) => true;
 }
 
-public struct S2
+public class S2
 {
 }
 
 [StructGenerators.GenerateEquality]
-public partial struct MyStruct
+public partial class MyClass
 {
     private readonly double _v;
     private readonly S1 _s1;
@@ -146,7 +148,7 @@ public partial struct MyStruct
 namespace FooBar
 {
     [StructGenerators.GenerateEquality]
-    public partial struct MyStruct
+    public partial class MyClass
     {
         private string P1 {get;}
         public string P2 {get; private set;}
