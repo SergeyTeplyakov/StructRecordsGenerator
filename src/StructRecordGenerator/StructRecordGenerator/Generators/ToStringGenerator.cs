@@ -45,6 +45,8 @@ using System.Linq;
 using System.Text;
 using StructGenerators;
 
+#nullable disable // Disabling not-nullable types here to simplify the implemnetation of the generated code.
+
 partial $$TYPE_DECLARATION_KEYWORD$$ $$TYPE_NAME$$
 {
     $$TYPE_MEMBERS$$
