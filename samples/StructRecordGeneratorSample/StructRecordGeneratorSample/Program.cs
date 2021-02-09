@@ -2,100 +2,150 @@
 //using System.Text;
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+using Iced.Intel;
 using StructGenerators;
-//#nullable disable
-// assembly level attribute
 namespace StructRecordGeneratorSample
 {
-    //[StructGenerators.StructRecord]
-    //[StructGenerators.GenerateToString]
-
-    //[StructEquality]
-
-    /// <summary>
-    /// sdfs
-    /// </summary>
-    [StructGenerators.GenerateToString]
-    public readonly partial struct ContentHashWithLastAccessTime
-    {
-        /// <nodoc />
-        public ContentHashWithLastAccessTime(ContentHash contentHash, DateTime lastAccessTime)
-        {
-            Hash = contentHash;
-            LastAccessTime = lastAccessTime;
-        }
-
-        /// <summary>
-        ///     Gets the content hash member.
-        /// </summary>
-        public ContentHash Hash { get; }
-
-        /// <summary>
-        ///     Gets the last time the content was accessed.
-        /// </summary>
-        public DateTime LastAccessTime { get; }
-
-        public static void FooBar(ContentHashWithLastAccessTime e, ContentHashWithLastAccessTime e2)
-        {
-            //bool bv = e == e2;
-
-            var s = e.ToString();
-        }
-    }
-
-    public class ContentHash
-    {
-    }
-
-    [GenerateToString(PrintTypeName = true, MaxStringLength = 5000)]
-    public partial class CustomClass<T>
-    {
-        // The record prints S = System.String[]
-        // Printing the content here by default instead!
-        [ToStringBehavior(CollectionsBehavior = CollectionsBehavior.PrintTypeNameAndCount, CollectionCountLimit = 5)]
-        // Just a count by default.
-        // IEnumerable<Type> for IEnumerable (based on the runtime type, not based on compile-time type).
-        // Configure the separator.
-        public string[] S = new[] { "1", null, "2" };
-
-        public string[] S2 => S;
-
-        // No boxing allocation for Value property
-        // in the generated ToString code
-        [ToStringBehavior]
-        public T Value { get; set; }
-    }
-
-    
-    [StructGenerators.GenerateToString]
-    //[GenerateStructEquality]
+    //[GenerateToString(PrintTypeName = true)]
     [StructRecord]
-    public partial struct ClassWithAShortName
+    public partial struct StructPoint
     {
-
+        public int X { get; init; }
+        public int Y { get; init; }
+    }
+    
+    public record Point
+    {
+        public int X { get; init; }
+        public int Y { get; init; }
     }
 
-    
-    [GenerateToString]
-    public partial class ClassWithAVeryLongNameLikeAReallyReallyLongOne
+    public interface ILogger
     {
+        void Always(string format, params object[] args);
+    }
 
+    public static class LoggerExtensions
+    {
+        public static void Always(this ILogger logger, string message)
+        { }
+
+        public static void Test(ILogger logger)
+        {
+            logger.Always("sdfasd");
+        }
     }
 
     class Program
     {
+        static async Task FooBarAsync()
+        {
+            Task task1 = GetTask1();
+            Task task2 = GetTask2();
+
+            await task1;
+            await task2;
+        }
+
+        public static async Task WhenAllWithCancellationAsync(IEnumerable<Task> tasks, CancellationToken token)
+        {
+            var completedTask = await Task.WhenAny(
+                Task.Delay(Timeout.InfiniteTimeSpan, token),
+                Task.WhenAll(tasks));
+            
+            token.ThrowIfCancellationRequested();
+            await completedTask;
+        }
+
+        private static async Task GetTask2()
+        {
+            await Task.Yield();
+            //lock (new object())
+            //{
+            //    await Task.Yield();
+            //}
+        }
+        
+        
+
+        private static Task GetTask1()
+        {
+            throw new NotImplementedException();
+        }
+
+        public class RemoteWorker : IDisposable
+        {
+            public async Task FinishAsync()
+            {
+                Console.WriteLine("FinishAsync");
+                throw null;
+            }
+
+            public void Dispose()
+            {
+                Console.WriteLine("Dispose");
+            }
+        }
+
+        static void NotCorrectVersion()
+        {
+            var list = Enumerable.Range(1, 5).Select(_ => new RemoteWorker()).ToList();
+
+            try
+            {
+                // The following code is not safe because the task produced by FinishAsync is never observed.
+                // So this will generate Unobserved task error and WaitAll will fail only if Dispose method will fail.
+                Task.WaitAll(list.Select(static w => w
+                    .FinishAsync()
+                    .ContinueWith(_ =>
+                    {
+                        w.Dispose();
+                    })
+                ).ToArray());
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("ERROR: " + e);
+            }
+        }
+
+        static void CorrectVersion()
+        {
+            var list = Enumerable.Range(1, 5).Select(_ => new RemoteWorker()).ToList();
+
+            try
+            {
+                // The following code is not safe because the task produced by FinishAsync is never observed.
+                // So this will generate Unobserved task error and WaitAll will fail only if Dispose method will fail.
+                Task.WaitAll(list.Select(static async w =>
+                {
+                    using (w)
+                    {
+                        await w.FinishAsync();
+
+                    }
+                }).ToArray());
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("ERROR: " + e);
+            }
+        }
 
         static void Main(string[] args)
         {
-            // The generated file name is 254 characters long!:
-            //C:\Users\seteplia\AppData\Local\Temp\VisualStudioSourceGeneratedDocuments\a4d7f8c8-8038-4522-9c15-b11d61b996bf\StructRecordGenerator\
-            // StructRecordGenerators.Generators.ToStringGenerator\StructRecordGeneratorSample.ClassWithAShortName_ToStringGenerator.cs
-            var o1 = new ClassWithAShortName();
-            Console.WriteLine(o1.ToString());
+            TaskScheduler.UnobservedTaskException += (sender, eventArgs) =>
+                Console.WriteLine($"Unobserved error: {eventArgs.Exception}");
+
+            //NotCorrectVersion();
+            CorrectVersion();
             
-            // The generated file name exceeds 260 and GoToDefinition doesn't work any more!
-            var o2 = new ClassWithAVeryLongNameLikeAReallyReallyLongOne();
-            Console.WriteLine(o2.ToString());
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
     }
 }

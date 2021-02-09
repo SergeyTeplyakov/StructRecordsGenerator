@@ -173,7 +173,7 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
             return body;
         }
 
-        private List<(ISymbol symbol, ToStringOptions? options)> FilterOutSkippedMembers(Compilation compilation, List<ISymbol> fieldsAndProperties)
+        private static List<(ISymbol symbol, ToStringOptions? options)> FilterOutSkippedMembers(Compilation compilation, List<ISymbol> fieldsAndProperties)
         {
             INamedTypeSymbol attributeSymbol = compilation.GetTypeByMetadataName("StructGenerators.ToStringBehaviorAttribute")!;
 
@@ -279,7 +279,7 @@ $$MODIFIER$$ bool PrintMembers(StringBuilder sb)
             return typeSymbol
                 .GetMembers()
                 .OfType<IMethodSymbol>()
-                // Checking whether the member is implicitly declared only for recrods.
+                // Checking whether the member is implicitly declared only for records.
                 .Where(m => (!isRecord || !m.IsImplicitlyDeclared) && m.IsObjectToStringOverride())
                 .ToArray();
         }

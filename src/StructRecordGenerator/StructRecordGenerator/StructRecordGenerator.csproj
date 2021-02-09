@@ -25,8 +25,10 @@
     <RepositoryUrl>https://github.com/SergeyTeplyakov/StructRecordsGenerator</RepositoryUrl>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <Description>A set of source generators for creating struc-based "records".</Description>
-    <Version>0.4.1</Version>
+    <Version>0.4.2</Version>
     <PackageReleaseNotes>
+      0.4.2
+      * Generate correct ToString implementation for records with primary constructors.
       0.4.1
       * Disable nullability context in the generated ToString
       0.4.0

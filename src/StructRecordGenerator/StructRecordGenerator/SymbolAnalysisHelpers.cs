@@ -184,10 +184,9 @@ namespace StructRecordGenerators
             var properties = type
                 .GetMembers()
                 .Where(m => !m.IsStatic && m.Kind == SymbolKind.Property)
-                .Select(s => new { Symbol = s, Syntax = s.DeclaringSyntaxReferences.FirstOrDefault()?.GetSyntax() as PropertyDeclarationSyntax })
-                .Where(s => s.Syntax != null)
-                .Where(p => !includeAutoPropertiesOnly || (p.Syntax.IsAutoProperty() || p.Syntax.IsGetSetAutoProperty()))
-                .Select(p => (IPropertySymbol)p.Symbol)
+                .Select(p => (IPropertySymbol)p)
+                .Where(p => !includeAutoPropertiesOnly || p.IsAutoProperty())
+                .Where(p => !p.IsEqualityContract())
                 .ToList();
 
             return properties;

@@ -7,59 +7,52 @@
         <member name="T:System.Runtime.CompilerServices.IsExternalInit">
             <nodoc />
         </member>
-        <member name="T:StructRecordGeneratorSample.ContentHashWithLastAccessTime">
+        <member name="M:StructRecordGeneratorSample.StructPoint.#ctor(System.Int32,System.Int32)">
             <summary>
-            sdfs
+            Creates an instance of struct StructPoint.
             </summary>
         </member>
-        <member name="M:StructRecordGeneratorSample.ContentHashWithLastAccessTime.#ctor(StructRecordGeneratorSample.ContentHash,System.DateTime)">
-            <nodoc />
-        </member>
-        <member name="P:StructRecordGeneratorSample.ContentHashWithLastAccessTime.Hash">
+        <member name="M:StructRecordGeneratorSample.StructPoint.WithX(System.Int32)">
             <summary>
-                Gets the content hash member.
+            Creates a copy of the current instance with a given argument <paramref name = "value"/>.
             </summary>
         </member>
-        <member name="P:StructRecordGeneratorSample.ContentHashWithLastAccessTime.LastAccessTime">
+        <member name="M:StructRecordGeneratorSample.StructPoint.WithY(System.Int32)">
             <summary>
-                Gets the last time the content was accessed.
+            Creates a copy of the current instance with a given argument <paramref name = "value"/>.
             </summary>
         </member>
-        <member name="M:StructRecordGeneratorSample.ContentHashWithLastAccessTime.ToString">
-            <inheritdoc/>
-        </member>
-        <member name="M:StructRecordGeneratorSample.CustomClass`1.ToString">
-            <inheritdoc/>
-        </member>
-        <member name="M:StructRecordGeneratorSample.ClassWithAShortName.ToString">
-            <inheritdoc/>
-        </member>
-        <member name="M:StructRecordGeneratorSample.ClassWithAShortName.Clone">
+        <member name="M:StructRecordGeneratorSample.StructPoint.Clone">
             <summary>
             Creates a copy of the current instance.
             </summary>
         </member>
-        <member name="M:StructRecordGeneratorSample.ClassWithAShortName.Equals(System.Object)">
+        <member name="M:StructRecordGeneratorSample.StructPoint.Equals(System.Object)">
             <inheritdoc/>
         </member>
-        <member name="M:StructRecordGeneratorSample.ClassWithAShortName.Equals(StructRecordGeneratorSample.ClassWithAShortName)">
+        <member name="M:StructRecordGeneratorSample.StructPoint.Equals(StructRecordGeneratorSample.StructPoint)">
             <inheritdoc/>
         </member>
-        <member name="M:StructRecordGeneratorSample.ClassWithAShortName.GetHashCode">
+        <member name="M:StructRecordGeneratorSample.StructPoint.GetHashCode">
             <inheritdoc/>
         </member>
-        <member name="M:StructRecordGeneratorSample.ClassWithAShortName.op_Equality(StructRecordGeneratorSample.ClassWithAShortName,StructRecordGeneratorSample.ClassWithAShortName)">
+        <member name="M:StructRecordGeneratorSample.StructPoint.op_Equality(StructRecordGeneratorSample.StructPoint,StructRecordGeneratorSample.StructPoint)">
             <summary>
             The equality operator <c>==</c> returns <c>true</c> if its operands are equal, <c>false</c> otherwise. 
             </summary>
         </member>
-        <member name="M:StructRecordGeneratorSample.ClassWithAShortName.op_Inequality(StructRecordGeneratorSample.ClassWithAShortName,StructRecordGeneratorSample.ClassWithAShortName)">
+        <member name="M:StructRecordGeneratorSample.StructPoint.op_Inequality(StructRecordGeneratorSample.StructPoint,StructRecordGeneratorSample.StructPoint)">
             <summary>
             The inequality operator <c>!=</c> returns <c>true</c> if its operands are not equal, <c>false</c> otherwise. 
             </summary>
         </member>
-        <member name="M:StructRecordGeneratorSample.ClassWithAVeryLongNameLikeAReallyReallyLongOne.ToString">
+        <member name="M:StructRecordGeneratorSample.StructPoint.ToString">
             <inheritdoc/>
+        </member>
+        <member name="M:StructRecordGeneratorSample.StructPoint.PrintMembers(System.Text.StringBuilder)">
+            <summary>
+            Prints the content of the instance into a given string builder.
+            </summary>
         </member>
         <member name="M:StructGenerators.ToStringGenerationHelper.PrintCollection``1(System.Text.StringBuilder,System.Collections.Generic.IEnumerable{``0},System.String,StructGenerators.CollectionsBehavior,System.Int32)">
             <summary>
