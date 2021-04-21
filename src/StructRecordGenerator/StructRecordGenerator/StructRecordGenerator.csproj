@@ -24,7 +24,7 @@
     <PackageLicenseUrl>https://github.com/SergeyTeplyakov/StructRecordsGenerator/blob/main/LICENSE</PackageLicenseUrl>
     <RepositoryUrl>https://github.com/SergeyTeplyakov/StructRecordsGenerator</RepositoryUrl>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <Description>A set of source generators for creating struc-based "records".</Description>
+    <Description>A set of source generators for creating struct-based "records".</Description>
     <Version>0.4.2</Version>
     <PackageReleaseNotes>
       0.4.2
